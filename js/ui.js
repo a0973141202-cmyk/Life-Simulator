@@ -4,6 +4,7 @@
  * stat-health/sanity/reputation/crisis, tags-container, event-history, choices-container.
  */
 
+import { chronicleLineKey } from "./chronicle-voice.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { applyTheme } from "./theme-manager.js";
 import { describeSocialFeedback, socialStanding } from "./social-feedback.js";
@@ -273,14 +274,26 @@ function renderEvent(state) {
     ? `${state.character.name || "未名"} · ${state.stage?.label || ""}`
     : "尚未開檔";
   lead.append(kicker, title);
+  const year = Number(state.time?.year);
+  const seen = new Set();
   const narrative = String(event.narrative || state.message || "")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line, index, all) => all.findIndex((row) => row.slice(0, 18) === line.slice(0, 18)) === index);
+    .filter((line) => !/落地|第一次分得清|前兩週開始按|一名[男女]嬰|出生紀錄|意識萌芽/.test(line))
+    .filter((line) => {
+      const years = [...line.matchAll(/((?:1[89]|20)\d{2})\s*年/g)].map((row) => Number(row[1]));
+      return !year || !years.length || years.every((stamp) => stamp === year);
+    })
+    .filter((line) => {
+      const key = chronicleLineKey(line);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   const lines = narrative.map((line) => paragraph(line)).filter(Boolean);
   if (!lines.length) {
-    const empty = paragraph(state.ready ? "本期沒有可公開的文字。" : "按下「開新檔案」。從五歲起，每一期只寫這兩週發生的事。");
+    const empty = paragraph(state.ready ? "本期沒有可公開的文字。" : "從五歲起，每一期只寫這兩週發生的事。");
     if (empty) lead.append(empty);
   } else {
     for (const line of lines) lead.append(line);
@@ -300,7 +313,7 @@ function renderEvent(state) {
     root.append(banner);
   }
 
-  root.scrollTop = 0;
+  scrollEventHistoryToLatest(root);
 }
 
 function renderChoices(state) {
@@ -446,10 +459,13 @@ function renderDeathResolution(state) {
 function syncNewFileControl(state) {
   const button = $("btn-new-file");
   if (!button) return;
-  const locked = Boolean(state?.ready && !state.gameOver);
-  button.disabled = locked;
-  button.setAttribute("aria-disabled", locked ? "true" : "false");
-  button.title = locked ? "當前人生尚未結束，不能另開檔案。" : "開新檔案";
+  button.hidden = true;
+  button.disabled = true;
+  button.tabIndex = -1;
+  button.setAttribute("aria-hidden", "true");
+  button.setAttribute("aria-disabled", "true");
+  button.removeAttribute("title");
+  void state;
 }
 
 export function renderLifeSim(state, handlers = {}) {

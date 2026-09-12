@@ -5,6 +5,9 @@
 import { YEAR_MAX, YEAR_MIN } from "../../constants.js";
 import { SETTLEMENT_COORDS, SETTLEMENT_FOUNDING } from "../settlement-geo.js";
 import { hemisphereFromLat } from "../seasons.js";
+import { canonicalizeCountry } from "../polity.js";
+
+export { canonicalizeCountry };
 
 export const REGION_LAT = {
   china: 32, taiwan: 24, hongkong: 22, japan: 36, korea: 37, mongolia: 47,
@@ -27,7 +30,16 @@ export function ethnicityBand(from, to, ethnicities) {
 function defaultCountryBands(region, country, from, to) {
   const start = Math.max(from, YEAR_MIN);
   const end = to;
-  if (region === "china" && (!country || country === "中國")) {
+  if (region === "taiwan") {
+    const rows = [];
+    if (start <= 1945) rows.push({ from: start, to: Math.min(end, 1945), country: "日本／臺灣" });
+    if (start <= 1948 && end >= 1946) {
+      rows.push({ from: Math.max(start, 1946), to: Math.min(end, 1948), country: "中華民國／臺灣" });
+    }
+    if (end >= 1949) rows.push({ from: Math.max(start, 1949), to: end, country: "中華民國／臺灣省" });
+    if (rows.length) return rows;
+  }
+  if (region === "china" && (!country || country === "中國" || country === "中華民國" || country === "中華人民共和國")) {
     const rows = [];
     if (start <= 1948) rows.push({ from: start, to: Math.min(end, 1948), country: "中華民國" });
     if (end >= 1949) rows.push({ from: Math.max(start, 1949), to: end, country: "中華人民共和國" });
@@ -114,7 +126,7 @@ export function getSettlementDisplayName(settlement, year) {
 export function getSettlementCountry(settlement, year) {
   if (!settlement) return "";
   const row = pickBand(settlement.countries, year);
-  return row?.country || settlement.country || "";
+  return canonicalizeCountry(row?.country || settlement.country || "", year, settlement.region);
 }
 
 export function getSettlementEthnicities(settlement, year) {

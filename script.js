@@ -12,7 +12,7 @@ export { beginExclusionTurn, optionExcluded, rememberExcluded, EXCLUSION_TURNS }
 export { composeExclusiveFill } from "./js/exclusive-fill.js";
 export { varyGenericNarrative, inferVariatorKind, maybeVaryChoice } from "./js/narrative-variator.js";
 export { VARIATOR_KINDS } from "./js/data/variator-lexicon.js";
-export { assembleWeeklyChronicle, chronicleOpener, pickFreshLine } from "./js/chronicle-voice.js";
+export { assembleWeeklyChronicle, chronicleOpener, chronicleLineKey, pickFreshLine } from "./js/chronicle-voice.js";
 export { composePeriodChronicle, composeFortnightRecord, composeOpeningBirth, composeWorldBeat } from "./js/dynamic-prose.js";
 export { scanNarrativeFacts } from "./js/narrative-facts.js";
 export { attachLifeProgress, resolveLifeStage, progressAllowsAction } from "./js/life-stage-manager.js";
@@ -107,6 +107,7 @@ export {
   shouldClosePlayWindow,
 } from "./js/life-bounds.js";
 export { canBeginNewLife, lifeIsActive, refuseNewLife } from "./js/life-session.js";
+export { SAVE_KEY, readLifeSave, writeLifeSave, clearLifeSave, hasLifeSave } from "./js/life-persist.js";
 export { makeDate, isLeapYear, formatDate, randomDateInYear, isValidGregorianDate } from "./js/data/calendar.js";
 export { natalEnvironmentTags, currentEnvironmentTags } from "./js/data/seasons.js";
 export { SETTLEMENT_COORDS, SETTLEMENT_FOUNDING } from "./js/data/settlement-geo.js";
@@ -168,6 +169,7 @@ import { GenesisEngine } from "./js/genesis.js";
 import { renderLifeSim, showBootError } from "./js/ui.js";
 import { SHOW_REPUTATION_UI } from "./js/data/ui-config.js";
 import { canBeginNewLife } from "./js/life-session.js";
+import { SAVE_KEY, clearLifeSave, readLifeSave } from "./js/life-persist.js";
 
 /**
  * Browser game loop. HUD fields match index.html IDs.
@@ -230,18 +232,34 @@ export class CenturyLifeLoop {
     return this;
   }
 
+  restoreFile() {
+    const data = readLifeSave();
+    if (!data) return null;
+    try {
+      const engine = GameEngine.fromJSON(data);
+      if (!engine?.character || !engine.clock) return null;
+      this.engine = engine;
+      this.sync(engine.getGameState()).paint();
+      return this.state;
+    } catch (error) {
+      console.error("LifeSim: 讀檔失敗", error);
+      return null;
+    }
+  }
+
   newFile() {
     try {
       if (this.engine && !canBeginNewLife(this.engine)) {
         this.sync(this.engine.getGameState()).paint();
         return this.state;
       }
+      clearLifeSave();
       this.engine = new GameEngine();
       const state = this.engine.initNewGame();
       this.sync(state).paint();
       return state;
     } catch (error) {
-      console.error("LifeSim: 開新檔案失敗", error);
+      console.error("LifeSim: 開檔失敗", error);
       showBootError(error);
       return null;
     }
@@ -265,31 +283,29 @@ export class CenturyLifeLoop {
     if (this.bound) return this;
     const button = document.getElementById("btn-new-file");
     if (!button) {
-      console.error("LifeSim: 找不到 #btn-new-file，開新檔案按鈕無法綁定");
+      console.error("LifeSim: 找不到 #btn-new-file");
       // #region agent log
       fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:bind",message:"bind-missing-button",data:{readyState:document.readyState},timestamp:Date.now(),hypothesisId:"D",runId:"post-fix"})}).catch(()=>{});
       // #endregion
       return this;
     }
+    button.hidden = true;
+    button.setAttribute("aria-hidden", "true");
+    button.tabIndex = -1;
     this.bound = true;
-    const startNew = () => {
+    const startNextLife = () => {
       try {
+        if (!this.engine || !canBeginNewLife(this.engine)) return;
         this.newFile();
       } catch (error) {
-        console.error("LifeSim: 開新檔案按鈕觸發失敗", error);
+        console.error("LifeSim: 結算後開檔失敗", error);
         showBootError(error);
       }
     };
-    button.addEventListener("click", startNew);
     const rebirth = document.getElementById("btn-rebirth");
-    if (rebirth) rebirth.addEventListener("click", startNew);
+    if (rebirth) rebirth.addEventListener("click", startNextLife);
     document.addEventListener("keydown", (event) => {
       if (event.target && ["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
-      if (event.key === "n" && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        this.newFile();
-        return;
-      }
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
       const choiceIndex = map[event.key] ?? map[event.code];
       if (choiceIndex == null) return;
@@ -305,7 +321,7 @@ export class CenturyLifeLoop {
   mount() {
     this.bind();
     try {
-      this.newFile();
+      if (!this.restoreFile()) this.newFile();
     } catch (error) {
       showBootError(error);
       console.error("LifeSim: 初次開檔失敗", error);
@@ -332,7 +348,7 @@ let app = null;
 
 function exposeGlobals() {
   if (typeof window === "undefined") return;
-  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife };
+  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY };
   window.GameEngine = GameEngine;
   window.GenesisEngine = GenesisEngine;
   window.CenturyLifeLoop = CenturyLifeLoop;

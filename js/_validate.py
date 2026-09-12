@@ -268,6 +268,28 @@ def main() -> None:
         errors.append("genesis must not hardcode beta year 1980")
     if "lifeLockUntilSettlement" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing lifeLockUntilSettlement")
+    if "century_life_save" not in read(ROOT / "life-persist.js"):
+        errors.append("life-persist missing century_life_save key")
+    if "writeLifeSave" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must autosave after each fortnight")
+    boot = read(ROOT.parent / "script.js")
+    if "clearLifeSave" not in boot:
+        errors.append("boot loop must clear the save only when a finished life is replaced")
+    if "restoreFile" not in boot:
+        errors.append("boot loop must restore from localStorage before rolling a new life")
+    if "autoLocalPersist: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing autoLocalPersist")
+    if "noManualReset: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing noManualReset")
+    html = read(ROOT.parent / "index.html")
+    if 'id="btn-new-file"' not in html:
+        errors.append("index.html must keep #btn-new-file id")
+    if "開新檔案" in html:
+        errors.append("index.html must not show a manual new-file reset")
+    if "autoLocalPersist: true" not in genesis:
+        errors.append("genesis missing autoLocalPersist flag")
+    if "noManualReset: true" not in genesis:
+        errors.append("genesis missing noManualReset flag")
     if "EVENT_COOLDOWN_CAP" not in read(ROOT / "event-memory.js"):
         errors.append("event-memory missing EVENT_COOLDOWN_CAP")
     if "filterCooledPool" not in read(ROOT / "world-event-engine.js"):
@@ -278,10 +300,20 @@ def main() -> None:
         errors.append("chronicle-lexicon missing hunger/illness/labor/neighbor banks")
     if "scanNarrativeFacts" not in read(ROOT / "narrative-facts.js"):
         errors.append("narrative-facts missing scanNarrativeFacts four-pillar sheet")
+    if "alignLiveClock" not in read(ROOT / "narrative-facts.js"):
+        errors.append("narrative-facts missing alignLiveClock year/age lock")
+    if "year - born" not in read(ROOT / "narrative-facts.js"):
+        errors.append("alignLiveClock must derive age from year - born")
+    if "lockChronicleToClock" not in read(ROOT / "dynamic-prose.js"):
+        errors.append("dynamic-prose missing lockChronicleToClock year/geo lock")
+    if "scrubEraCopy" not in read(ROOT / "dynamic-prose.js"):
+        errors.append("dynamic-prose missing scrubEraCopy era/geo copy lock")
+    if "FOOD_BY_REGION" not in read(DATA / "prose-atoms.js"):
+        errors.append("prose-atoms missing FOOD_BY_REGION geo staples")
     if "composePeriodChronicle" not in read(ROOT / "dynamic-prose.js"):
         errors.append("dynamic-prose missing composePeriodChronicle")
-    if "composeFortnightRecord" not in read(ROOT / "dynamic-prose.js"):
-        errors.append("dynamic-prose missing composeFortnightRecord")
+    if "export function composeFortnightRecord" not in read(ROOT / "dynamic-prose.js"):
+        errors.append("dynamic-prose missing composeFortnightRecord definition")
     if "PRIOR_LIFE_RE" not in read(ROOT / "chronicle-voice.js"):
         errors.append("chronicle-voice must strip birth/awakening repeats from 本期紀事")
     if "fourPillarProse" not in read(ROOT / "GameEngine.js"):
@@ -328,8 +360,9 @@ def main() -> None:
         errors.append("eventGenerator must start a text-history turn each week")
     if "weaveVariatorLine" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must weave year/place/class matrix lines")
-    if "composeFortnightRecord" not in read(ROOT / "chronicle-voice.js"):
-        errors.append("chronicle-voice must assemble the current fortnight only")
+    chronicle_voice = read(ROOT / "chronicle-voice.js")
+    if 'from "./dynamic-prose.js"' not in chronicle_voice or "composeFortnightRecord" not in chronicle_voice:
+        errors.append("chronicle-voice must import composeFortnightRecord from dynamic-prose")
     if "globalTextDedup" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing globalTextDedup")
     if "attachLifeContext" not in read(ROOT / "eventGenerator.js"):
@@ -958,6 +991,8 @@ def main() -> None:
         errors.append("script.js must export age-gate APIs")
     if "canBeginNewLife" not in script_js:
         errors.append("script.js must export the permanent life lock")
+    if "SAVE_KEY" not in script_js or "century_life_save" not in read(ROOT / "life-persist.js"):
+        errors.append("script.js must export the localStorage save key")
     if "EVENT_COOLDOWN_CAP" not in script_js:
         errors.append("script.js must export event cooldown helpers")
     if "assembleWeeklyChronicle" not in script_js:
@@ -1122,6 +1157,18 @@ def main() -> None:
             errors.append(f"historical-demographics missing {needle}")
     if "中華民國" not in schema:
         errors.append("China default polity bands must include 中華民國")
+    polity = read(DATA / "polity.js")
+    if "CHINA_SPLIT_YEAR" not in polity:
+        errors.append("polity missing CHINA_SPLIT_YEAR 1949 split")
+    if "中華民國／臺灣省" not in polity or "中華人民共和國" not in polity:
+        errors.append("polity must split ROC Taiwan and PRC mainland after 1949")
+    if "isTaiwanPlace" not in polity or "isMainlandChinaPlace" not in polity:
+        errors.append("polity must distinguish Taiwan from mainland China")
+    east_asia = read(DATA / "settlements" / "east-asia.js")
+    if "中華民國／臺灣省" not in east_asia:
+        errors.append("Taiwan settlements must use 中華民國／臺灣省 after 1949")
+    if "canonicalizeCountry" not in schema:
+        errors.append("settlement country lookup must canonicalize year-local polity")
     if "poltava_village" not in read(DATA / "settlements" / "inner-asia.js"):
         errors.append("missing documented Ukrainian village settlement")
     if "dingxian" not in read(DATA / "settlements" / "east-asia.js"):

@@ -3,7 +3,7 @@
  * from the four-pillar fact sheet — not filled from sentence frames.
  */
 import { VARIATOR_KINDS } from "./data/variator-lexicon.js";
-import { composeChoiceLine, composePeriodChronicle, composeSituationLine } from "./dynamic-prose.js";
+import { composeChoiceLine, composePeriodChronicle, composeSituationLine, scrubEraCopy } from "./dynamic-prose.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
 import { optionExcluded } from "./exclusion-buffer.js";
 
@@ -104,10 +104,13 @@ const KEEP_SPECIFIC = /行賄|巡警|開槍|告密|逃兵|當舖|匯款|炸藥|�
 export function maybeVaryChoice(rng, action, ctx = {}) {
   if (!action?.text) return action;
   const who = ctx.character;
-  if (KEEP_SPECIFIC.test(action.text) && !textOnCooldown(who, action.text) && !optionExcluded(who, action.id, action.text)) {
-    return action;
-  }
-  return varyGenericChoice(rng, action, ctx);
+  const facts = ctx.narrativeFacts;
+  const keep = KEEP_SPECIFIC.test(action.text) && !textOnCooldown(who, action.text) && !optionExcluded(who, action.id, action.text);
+  const next = keep ? action : varyGenericChoice(rng, action, ctx);
+  if (!facts || !next?.text) return next;
+  const text = scrubEraCopy(next.text, facts);
+  const trueText = scrubEraCopy(next.trueText || next.text, facts);
+  return { ...next, text, trueText };
 }
 
 export { VARIATOR_KINDS };

@@ -4,7 +4,8 @@
  */
 import { getActiveHistory, getEraForYear } from "./data.js";
 import { attachLifeContext } from "./life-context.js";
-import { getSettlementDisplayName } from "./settlements.js";
+import { canonicalizeCountry } from "./data/polity.js";
+import { getSettlementCountry, getSettlementDisplayName } from "./settlements.js";
 import { GEO_BAND_ZH, publicTagLabel } from "./data/ui-zh.js";
 
 function ancestryLabels(character = {}) {
@@ -30,24 +31,31 @@ function housingOf(life, character, settlement) {
   return kind === "village" ? "村裏的屋子" : "城裡普通的一戶";
 }
 
+function pulseFitsYear(title, year) {
+  const raw = String(title || "");
+  const years = [...raw.matchAll(/\b((?:1[89]|20)\d{2})\b/g)].map((row) => Number(row[1]));
+  if (!years.length || !year) return true;
+  return years.every((stamp) => stamp === Number(year));
+}
+
 function historyNouns(ctx, year, region) {
   const nouns = [];
   const upheaval = ctx.upheaval || {};
   const threads = upheaval.threads || [];
   if (upheaval.label) nouns.push(upheaval.label);
-  if (threads.includes("unemployment")) nouns.push("失業隊伍", "配給窗常關");
+  if (threads.includes("unemployment")) nouns.push("糧店常關", "排隊買不到");
   if (threads.includes("war") || threads.includes("conscription")) nouns.push("徵兵", "逃難的消息");
-  if (threads.includes("famine") || threads.includes("unemployment") && (ctx.lifeContext?.hungry)) {
+  if (threads.includes("famine") || (threads.includes("unemployment") && ctx.lifeContext?.hungry)) {
     nouns.push("糧店時開時關");
   }
   if (threads.includes("purge") || threads.includes("occupation")) nouns.push("清點戶口", "抓人");
   const era = getEraForYear(year) || {};
-  if (era.name) nouns.push(era.name);
-  const pulses = getActiveHistory(year, ctx.week || ctx.time?.week || 1, region) || [];
-  const pulse = pulses[0] || ctx.historyPulse || null;
+  const week = ctx.week || ctx.time?.week || 1;
+  const pulses = getActiveHistory(year, week, region) || [];
+  const pulse = pulses.find((row) => pulseFitsYear(row.title, year)) || null;
   if (pulse?.title) nouns.push(pulse.title);
   return {
-    nouns: [...new Set(nouns)].filter(Boolean).slice(0, 6),
+    nouns: [...new Set(nouns)].filter(Boolean).slice(0, 4),
     eraName: era.name || `${year}年代`,
     eraSummary: era.summary || "",
     pulseTitle: pulse?.title || "",
@@ -57,16 +65,53 @@ function historyNouns(ctx, year, region) {
   };
 }
 
+export function alignLiveClock(ctx = {}) {
+  const character = ctx.character || {};
+  const born = Number(character.birthYear);
+  const clockYear = Number(ctx.year ?? ctx.time?.year);
+  const clockAge = Number(ctx.ageYears ?? ctx.time?.ageYears);
+  let year = Number.isFinite(clockYear) ? clockYear : NaN;
+  let age = Number.isFinite(clockAge) ? clockAge : NaN;
+  if (Number.isFinite(born) && born > 0) {
+    if (Number.isFinite(year) && year < born) year = born;
+    if (Number.isFinite(year)) {
+      const expected = Math.max(0, year - born);
+      const birthdayPending = expected > 0 && age === expected - 1;
+      if (!Number.isFinite(age) || !(age === expected || birthdayPending)) {
+        age = expected;
+      }
+    } else if (Number.isFinite(age)) {
+      year = born + Math.max(0, Math.floor(age));
+    } else {
+      year = born;
+      age = 0;
+    }
+  } else {
+    if (!Number.isFinite(year)) year = Number(ctx.lifeContext?.year) || 0;
+    if (!Number.isFinite(age)) age = 0;
+  }
+  return { year, age, birthYear: Number.isFinite(born) && born > 0 ? born : 0 };
+}
+
 export function scanNarrativeFacts(ctx = {}) {
   const character = ctx.character || {};
   if (!ctx.lifeContext) attachLifeContext(ctx);
   const life = ctx.lifeContext || {};
-  const year = Number(ctx.year ?? life.year ?? character.birthYear) || 0;
+  const clock = alignLiveClock({ ...ctx, character });
+  const year = clock.year;
   const settlement = ctx.settlement || null;
   const city = settlement
     ? getSettlementDisplayName(settlement, year)
     : (character.cityName || "此地");
-  const country = character.country || settlement?.country || "";
+  const country = canonicalizeCountry(
+    ctx.country
+      || (settlement ? getSettlementCountry(settlement, year) : "")
+      || character.country
+      || settlement?.country
+      || "",
+    year,
+    character.region || settlement?.region || ctx.region,
+  );
   const health = Number(ctx.stats?.health ?? character.stats?.health ?? 50);
   const tags = life.tags || ctx.tags || character.tags || [];
   const hist = historyNouns(ctx, year, character.region || settlement?.region || ctx.region);
@@ -76,8 +121,13 @@ export function scanNarrativeFacts(ctx = {}) {
   const hasMotherRecord = Boolean(parents.mother);
   return {
     year,
+    birthYear: clock.birthYear,
+    age: clock.age,
     city,
     country,
+    region: character.region || settlement?.region || ctx.region || "",
+    climate: character.climate || settlement?.climate || "",
+    kind: settlement?.kind || character.settlementKind || "",
     place: country ? `${country}，${city}` : city,
     classId: life.classId || character.familyClassId || "worker",
     classLabel: life.classLabel || character.familyClassLabel || "未登記",
@@ -104,7 +154,6 @@ export function scanNarrativeFacts(ctx = {}) {
     posTags: life.posTags || [],
     negTags: life.negTags || [],
     season: ctx.environment?.seasonLabel || ctx.season || "",
-    age: Number(ctx.ageYears ?? ctx.time?.ageYears ?? 0),
     stageId: ctx.stage?.id || "",
     gender: character.gender === "female" ? "女" : "男",
     childWord: character.gender === "female" ? "女孩" : "男孩",

@@ -127,8 +127,9 @@ body {
   margin: 0;
 }
 
-.masthead-meta .btn-file {
-  margin-left: auto;
+.masthead-meta .btn-file,
+#btn-new-file {
+  display: none !important;
 }
 
 .file-no {

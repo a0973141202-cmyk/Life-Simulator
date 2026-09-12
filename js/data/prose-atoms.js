@@ -5,10 +5,86 @@
  */
 
 export const FOOD_ATOM = Object.freeze({
-  destitute: ["發黴的黑麵包", "糠餅", "清水湯", "樹皮混進鍋的糊"],
-  poor: ["冷饅頭", "配給麵包", "隔夜的鍋底", "稀粥"],
-  getting_by: ["隔夜飯", "配給本上的那一勺", "能買到的麵"],
+  destitute: ["糠餅", "清水湯", "樹皮混進鍋的糊", "發黴的冷飯"],
+  poor: ["冷饅頭", "隔夜的鍋底", "稀粥", "冷飯"],
+  getting_by: ["隔夜飯", "能買到的麵", "鍋裡剩下的粥"],
   comfortable: ["舖子裏賣不掉的隔夜貨", "米缸底的碎米"],
+});
+
+/** Staple food by geography. Bread only where bread was the daily grain. */
+export const FOOD_BY_REGION = Object.freeze({
+  china_north: {
+    destitute: "糠餅或樹皮糊",
+    poor: "冷饅頭或稀粥",
+    getting_by: "隔夜的窩頭或粥",
+    comfortable: "米缸底的碎米",
+  },
+  china_south: {
+    destitute: "發黴的冷飯或番薯",
+    poor: "冷飯或稀粥",
+    getting_by: "隔夜飯",
+    comfortable: "米缸底的碎米",
+  },
+  taiwan: {
+    destitute: "番薯籤或稀粥",
+    poor: "冷飯或稀粥",
+    getting_by: "隔夜飯",
+    comfortable: "米缸底的碎米",
+  },
+  se_asia: {
+    destitute: "發黴的冷飯或木薯",
+    poor: "冷飯或稀粥",
+    getting_by: "隔夜的飯",
+    comfortable: "還能買到的米",
+  },
+  south_asia: {
+    destitute: "稀粥或發黴的冷飯",
+    poor: "冷飯或扁麵",
+    getting_by: "隔夜的飯",
+    comfortable: "還能買到的麵餅",
+  },
+  africa: {
+    destitute: "木薯糊或小米湯",
+    poor: "小米糊或稀粥",
+    getting_by: "隔夜的糊",
+    comfortable: "還能買到的穀物",
+  },
+  west: {
+    destitute: "發黴的黑麵包或清湯",
+    poor: "配給麵包或冷湯",
+    getting_by: "隔夜的麵包",
+    comfortable: "舖子裏賣不掉的隔夜貨",
+  },
+  russia: {
+    destitute: "發黴的黑麵包或糠",
+    poor: "黑麵包或清湯",
+    getting_by: "隔夜的麵包",
+    comfortable: "還能換到的麥",
+  },
+  latin_america: {
+    destitute: "稀粥或冷玉米餅",
+    poor: "冷玉米餅或稀粥",
+    getting_by: "隔夜的玉米餅",
+    comfortable: "還能買到的豆和玉米",
+  },
+  middle_east: {
+    destitute: "扁麵包皮或稀粥",
+    poor: "扁麵包或稀粥",
+    getting_by: "隔夜的餅",
+    comfortable: "還能買到的麵",
+  },
+  japan: {
+    destitute: "稀粥或番薯",
+    poor: "冷飯或稀粥",
+    getting_by: "隔夜飯",
+    comfortable: "米缸底的碎米",
+  },
+  korea: {
+    destitute: "稀粥或糠",
+    poor: "冷飯或稀粥",
+    getting_by: "隔夜飯",
+    comfortable: "米缸底的碎米",
+  },
 });
 
 export const LABOR_ATOM = Object.freeze({
@@ -32,7 +108,7 @@ export const BODY_ATOM = Object.freeze({
 });
 
 export const THREAD_ATOM = Object.freeze({
-  unemployment: ["失業隊伍排到巷口", "配給窗常關"],
+  unemployment: ["失業隊伍排到巷口", "糧店常關"],
   war: ["徵兵名冊在傳", "逃難的人堵住路口"],
   conscription: ["有人被點去當兵", "家裏藏壯丁"],
   famine: ["糧店時開時關", "樹皮和糠進鍋"],

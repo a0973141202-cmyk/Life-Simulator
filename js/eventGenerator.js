@@ -34,12 +34,13 @@ import {
 } from "./history-engine.js";
 import { evaluateWeeklyMortality } from "./mortality-engine.js";
 import { chance, pick, randInt } from "./rng.js";
-import { findSettlement } from "./settlements.js";
+import { findSettlement, getSettlementCountry } from "./settlements.js";
+import { canonicalizeCountry } from "./data/polity.js";
 import { uniqueTags } from "./tag-system.js";
 import { describeSocialFeedback } from "./social-feedback.js";
 import { scrubPublicText } from "./data/public-text.js";
-import { assembleWeeklyChronicle, chronicleStageLine, chronicleSituationLine } from "./chronicle-voice.js";
-import { composeHistoryPulse } from "./dynamic-prose.js";
+import { assembleWeeklyChronicle, chronicleStageLine, chronicleSituationLine, scanNarrativeFacts } from "./chronicle-voice.js";
+import { composeHistoryPulse, scrubEraCopy } from "./dynamic-prose.js";
 import { consumeOpeningWeekLead } from "./opening-chronicle.js";
 import { eventOutline, rememberTriggeredMany } from "./event-memory.js";
 import { beginTextTurn, filterFreshByText, rememberTextSnippet } from "./text-history.js";
@@ -80,7 +81,7 @@ function matchesAction(action, ctx) {
   if (when.classes && !when.classes.includes(ctx.familyClassId)) return false;
   if (when.regions && !when.regions.includes(ctx.region)) return false;
   if (when.countriesAny) {
-    const country = ctx.character?.country || "";
+    const country = ctx.country || ctx.character?.country || "";
     if (!when.countriesAny.some((item) => country.includes(item))) return false;
   }
   if (!whenTagsMatch(when, ctx)) return false;
@@ -226,7 +227,7 @@ function statusLine(stats, tags, ledger, ctx = {}) {
   if (tags.includes("勤學") || tags.includes("acquired_勤學") || tags.includes("parent_trait_math_aptitude")) bits.push("手裏還有沒做完的功課或帳");
   if (tags.includes("戰火") || tags.includes("hook_war")) bits.push("爆炸和槍聲還沒停，窗紙仍在抖");
   if (tags.includes("socio_extreme_poverty") || tags.includes("socio_working_poor") || tags.includes("底層開局") || tags.includes("household_hungry")) {
-    bits.push("家裏仍在數每一粒米、每一塊發黴的麵包");
+    bits.push("家裏仍在數每一粒米、每一口剩飯");
     if ((stats.health ?? 50) <= 40) {
       bits.push("這兩週雙腿腫得發亮，按下去的坑很久才彈回來，家裏的人說這是水腫");
     }
@@ -250,7 +251,7 @@ function statusLine(stats, tags, ledger, ctx = {}) {
   if (tags.includes("school_bullied") || tags.includes("school_hated")) bits.push("有人把你寫在下手或報復的名單上");
   if (tags.includes("school_expelled") || tags.includes("school_record")) bits.push("學籍或處分正在改寫你能不能進校門");
   if (tags.some((tag) => tag.startsWith("caste_"))) bits.push("有人在核對你是不是「那一掛」，核對完會收費或動手");
-  if ((ctx.upheaval?.tier || 0) >= 2) bits.push(`時局是${ctx.upheaval.label}：配給、抓人、或逃難比平常更硬`);
+  if ((ctx.upheaval?.tier || 0) >= 2) bits.push(`時局是${ctx.upheaval.label}：糧店、抓人、或逃難比平常更硬`);
   else if (ctx.upheaval?.id) bits.push(`大環境仍是${ctx.upheaval.label}`);
   const safeBits = bits.filter((bit) => !scanSemanticMismatches(bit, ctx).length);
   const body = safeBits.length ? safeBits.join("；") + "。" : (situationFrame(ctx).strict ? "這一週身體還能走動，帳也還沒被砸門來收。" : "這一週沒有新的病，也沒有新的工。");
@@ -381,6 +382,11 @@ export function generateTurn(rng, state) {
     turn: time.turn || date.turn,
     ageYears: time.ageYears,
     region: character.region,
+    country: canonicalizeCountry(
+      getSettlementCountry(settlement, time.year) || character.country || "",
+      time.year,
+      character.region || settlement?.region,
+    ),
     familyClassId: character.familyClassId,
     tags: uniqueTags([...(character.tags || []), ...(environment.tags || [])]),
     natalTags: character.tags || [],
@@ -413,6 +419,7 @@ export function generateTurn(rng, state) {
   ctx.tags = collectCtxTags(ctx);
   attachOrganicContext(ctx);
   attachLifeContext(ctx);
+  ctx.narrativeFacts = scanNarrativeFacts(ctx);
   attachLifeProgress(ctx);
   ctx.childClimate = childhoodClimate(ctx);
   tickHistory(character, { year: time.year, iso: time.iso });
@@ -605,7 +612,16 @@ export function generateTurn(rng, state) {
   const chaotic = useLock
     ? exclusiveRaw.map((option, index) => ({ ...option, chaosSlot: "fact", index }))
     : applyChaosToTriad(rng, exclusiveRaw, chaosProfile, ctx);
-  const options = chaotic.map((option) => stampChoiceFingerprint(dressOption(rng, option, ctx, chaosProfile)));
+  const options = chaotic.map((option) => {
+    const dressed = stampChoiceFingerprint(dressOption(rng, option, ctx, chaosProfile));
+    const facts = ctx.narrativeFacts;
+    if (!facts) return dressed;
+    return {
+      ...dressed,
+      text: scrubEraCopy(dressed.text, facts),
+      trueText: scrubEraCopy(dressed.trueText || dressed.text, facts),
+    };
+  });
   rememberOfferedChoices(character, options, stage.id);
   rememberExcluded(character, options, {
     eventIds: [
@@ -618,9 +634,16 @@ export function generateTurn(rng, state) {
   const passive = weeklyPassive(rng, ctx);
 
   consumeOpeningWeekLead(character);
-  weaveVariatorLine(rng, ctx, character);
-  renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng);
+  const dateStamp = `${date.year}年${date.month}月${date.day}日`;
+  const variatorLine = weaveVariatorLine(rng, ctx, character);
+  const dailyLine = renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng);
   const narrative = scrubSemanticText(scrubPublicText(assembleWeeklyChronicle(rng, [
+    dateStamp,
+    sliceOfLife(rng, stage, era, ctx),
+    statusLine(ctx.stats || character.stats, ctx.tags, ledger, ctx),
+    variatorLine,
+    dailyLine,
+    ...(passive.notes || []),
     useLock && turningLocked && turningPoint ? `${turningPoint.title}。${turningPoint.journal}` : "",
     useLock && worldLocked ? renderWorldEvent(worldIncident, ctx, rng) : "",
     useLock && figureLocked ? renderFigureEncounter(figureIncident, ctx, rng) : "",

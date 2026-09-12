@@ -74,7 +74,7 @@ export function attachLifeContext(ctx = {}) {
     || String(id).startsWith("climate_")
     || String(id).startsWith("current_date_")
   ));
-  const year = ctx.year ?? character.birthYear;
+  const year = ctx.year ?? ctx.time?.year ?? character.birthYear;
   const fatherAlive = parentAlive(parents.father, tags, "father", year);
   const motherAlive = parentAlive(parents.mother, tags, "mother", year);
   let economy = "getting_by";

@@ -7,10 +7,11 @@ import {
   composePeriodChronicle,
   composeSituationLine,
   composeStageClause,
+  lockChronicleToClock,
 } from "./dynamic-prose.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { rememberTriggeredEvent } from "./event-memory.js";
-import { getSettlementDisplayName } from "./settlements.js";
+import { getSettlementCountry, getSettlementDisplayName } from "./settlements.js";
 import { publicTagLabel } from "./data/ui-zh.js";
 
 const PRIOR_LIFE_RE = /落地|第一次分得清|前兩週開始按|意識萌芽|一名[男女]嬰/;
@@ -24,17 +25,21 @@ function ancestryLabel(ctx = {}) {
 }
 
 export function chronicleContext(ctx = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const settlement = ctx.settlement || null;
-  const year = ctx.year || ctx.time?.year || "";
-  const city = settlement
+  const year = facts.year || ctx.year || ctx.time?.year || "";
+  const city = facts.city || (settlement
     ? getSettlementDisplayName(settlement, year)
-    : (ctx.character?.cityName || "此地");
-  const country = ctx.character?.country || "";
+    : (ctx.character?.cityName || "此地"));
+  const country = facts.country || ctx.country
+    || (settlement ? getSettlementCountry(settlement, year) : "")
+    || ctx.character?.country
+    || "";
   return {
     year: year || "這一",
     city,
     place: country ? `${country}，${city}` : city,
-    season: ctx.environment?.seasonLabel || ctx.season || "這一季",
+    season: facts.season || ctx.environment?.seasonLabel || ctx.season || "這一季",
     ancestry: ancestryLabel(ctx),
   };
 }
@@ -76,34 +81,54 @@ export function dressChronicleParagraph(rng, text, ctx = {}) {
   return raw;
 }
 
-function chronicleFingerprint(text) {
+export function chronicleLineKey(text) {
   const compact = String(text || "").replace(/\s/g, "");
+  if (!compact) return "";
   if (/水腫/.test(compact) && /腿/.test(compact)) return "edema-body";
   if (/冷毛巾/.test(compact) && /燒/.test(compact)) return "fever-body";
   if (/時局/.test(compact)) return `pulse:${compact.slice(0, 22)}`;
   return compact.slice(0, 22);
 }
 
+function chronicleFingerprint(text) {
+  return chronicleLineKey(text);
+}
+
+function currentYearOf(ctx = {}) {
+  return Number(ctx.narrativeFacts?.year || ctx.year || ctx.time?.year || 0);
+}
+
+function isCurrentFortnightText(text, year) {
+  const raw = String(text || "").trim();
+  if (!raw || PRIOR_LIFE_RE.test(raw)) return false;
+  const years = [...raw.matchAll(/((?:1[89]|20)\d{2})\s*年/g)].map((row) => Number(row[1]));
+  if (year && years.some((stamp) => stamp !== year)) return false;
+  return true;
+}
+
 export function assembleWeeklyChronicle(rng, parts, ctx) {
   if (!ctx.narrativeFacts) ctx.narrativeFacts = scanNarrativeFacts(ctx);
+  const facts = ctx.narrativeFacts;
+  const year = facts.year || currentYearOf(ctx);
   const seen = new Set();
   const lines = [];
   const push = (part) => {
-    const text = String(part || "").trim();
-    if (!text) return;
-    if (PRIOR_LIFE_RE.test(text) && lines.length) return;
-    const key = chronicleFingerprint(text);
-    if (seen.has(key)) return;
-    seen.add(key);
-    lines.push(text);
+    for (const chunk of String(part || "").split("\n")) {
+      const locked = lockChronicleToClock(chunk.trim(), facts);
+      if (!isCurrentFortnightText(locked, year)) continue;
+      const key = chronicleLineKey(locked);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      lines.push(locked);
+    }
   };
   push(composeFortnightRecord(rng, ctx));
   for (const part of parts || []) push(part);
-  const joined = lines.filter(Boolean).join("\n");
+  const joined = lines.join("\n");
   if (ctx.character && joined) {
     rememberTriggeredEvent(ctx.character, { stem: joined.slice(0, 40) }, ctx);
   }
   return joined;
 }
 
-export { composePeriodChronicle, scanNarrativeFacts };
+export { composePeriodChronicle, composeFortnightRecord, scanNarrativeFacts };

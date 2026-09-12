@@ -66,7 +66,7 @@ const PREFIX_BEATS = [
     "規矩寫在眼神裡。你這一週沒有裝外地人。",
     "有人聽出你不是本地。你把句子改短。",
   ], [6, 120], { direction: "withdraw", hooks: ["social"] }],
-  ["date_", "link_date", "按出生那天留下的節氣感改這一週的步調", { mood: 1 }, [
+  ["date_", "link_date", "按這一週的冷熱和雨，改出門和睡覺的時間", { mood: 1 }, [
     "日子本身會提醒身體。你沒有把它說成預兆。",
     "你比旁邊的人早一點添衣或早一點起床。",
   ], [5, 120], { direction: "tend", hooks: ["weather"] }],

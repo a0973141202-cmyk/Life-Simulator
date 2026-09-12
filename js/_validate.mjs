@@ -5,7 +5,8 @@ import { isForbiddenEthnicity } from "./data/forbidden-groups.js";
 import { GameEngine } from "./GameEngine.js";
 import { isLeapYear, isValidGregorianDate, makeDate } from "./data/calendar.js";
 import { natalEnvironmentTags } from "./data/seasons.js";
-import { findSettlement, isSettlementAvailable } from "./settlements.js";
+import { findSettlement, getSettlementCountry, isSettlementAvailable } from "./settlements.js";
+import { canonicalizeCountry } from "./demographics-engine.js";
 import { currentEnvironmentTags } from "./data/seasons.js";
 import { canBeginNewLife } from "./life-session.js";
 import { BETA_CONFIG, isBetaEnabled } from "./data/beta-config.js";
@@ -21,6 +22,8 @@ import { createRng } from "./rng.js";
 import { resetSessionRepeat } from "./session-repeat.js";
 import { varyGenericNarrative } from "./narrative-variator.js";
 import { beginTextTurn, textOnCooldown, rememberTextSnippet, TEXT_HISTORY_TURNS } from "./text-history.js";
+import { composeFortnightRecord, lockChronicleToClock } from "./dynamic-prose.js";
+import { scanNarrativeFacts, alignLiveClock } from "./narrative-facts.js";
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -191,6 +194,96 @@ assert(/農村/.test(sovietVillage.birthplaceLabel) && sovietVillage.birthplaceL
 
 const beijingNow = genesis.generateRandomCharacter({ birthYear: 2000, settlementId: "beijing" });
 assert(beijingNow.country === "中華人民共和國" && beijingNow.cityName === "北京", "2000 Beijing PRC");
+
+assert(canonicalizeCountry("中華民國", 1935, "china") === "中華民國", "pre-1949 mainland stays ROC");
+assert(canonicalizeCountry("中華民國", 1967, "china") === "中華人民共和國", "stale ROC birth stamp remaps on mainland after 1949");
+assert(canonicalizeCountry("臺灣", 1967, "taiwan") === "中華民國／臺灣省", "1967 Taiwan is ROC Taiwan province");
+assert(!canonicalizeCountry("臺灣", 1967, "taiwan").includes("中華人民共和國"), "Taiwan never becomes PRC");
+assert(getSettlementCountry(findSettlement("yanji"), 1967) === "中華人民共和國", "1967 Yanji is PRC");
+assert(getSettlementCountry(findSettlement("taipei"), 1935).includes("日本"), "1935 Taipei is Japanese Taiwan");
+assert(getSettlementCountry(findSettlement("taipei"), 1967) === "中華民國／臺灣省", "1967 Taipei is ROC Taiwan province");
+
+const clock = alignLiveClock({
+  year: 1967,
+  ageYears: 5,
+  character: { birthYear: 1938, region: "africa" },
+});
+assert(clock.year === 1967 && clock.age === 29, "inconsistent age is corrected from birth year");
+const driftedFacts = scanNarrativeFacts({
+  year: 1967,
+  ageYears: 5,
+  character: { birthYear: 1938, region: "china", cityName: "延吉", familyClassId: "peasant" },
+});
+assert(driftedFacts.year === 1967 && driftedFacts.age === 29, "fact sheet cannot keep a time-travel age");
+const clockOk = alignLiveClock({
+  year: 1927,
+  ageYears: 5,
+  character: { birthYear: 1922 },
+});
+assert(clockOk.year === 1927 && clockOk.age === 5, "consistent year/age/birth stays put");
+const beforeBirthday = alignLiveClock({
+  year: 1927,
+  ageYears: 4,
+  character: { birthYear: 1922 },
+});
+assert(beforeBirthday.year === 1927 && beforeBirthday.age === 4, "age may trail year-birth by one");
+
+const oyoFacts = scanNarrativeFacts({
+  year: 1927,
+  ageYears: 5,
+  region: "africa",
+  settlement: findSettlement("oyo_village"),
+  character: { birthYear: 1922, region: "africa", cityName: "奧約農村", climate: "tropical", familyClassId: "peasant" },
+});
+assert(oyoFacts.year === 1927 && oyoFacts.age === 5, "oyo facts stay in 1927");
+const oyoLine = composeFortnightRecord(() => 0.2, {
+  year: 1927,
+  ageYears: 5,
+  region: "africa",
+  settlement: findSettlement("oyo_village"),
+  character: { birthYear: 1922, region: "africa", climate: "tropical", familyClassId: "peasant", cityName: "奧約農村" },
+  narrativeFacts: oyoFacts,
+});
+assert(!/麵包/.test(oyoLine), `Africa 1927 must not use bread: ${oyoLine}`);
+assert(!/1922/.test(oyoLine), `chronicle must not reprint birth year: ${oyoLine}`);
+assert(!/落地|分得清|出生/.test(oyoLine), `chronicle must not restack birth copy: ${oyoLine}`);
+
+const dingFacts = scanNarrativeFacts({
+  year: 1935,
+  ageYears: 5,
+  region: "china",
+  settlement: findSettlement("dingxian"),
+  character: { birthYear: 1930, region: "china", cityName: "定縣農村", climate: "continental", familyClassId: "peasant" },
+});
+assert(dingFacts.year === 1935 && dingFacts.age === 5, "dingxian facts stay in 1935");
+const dingLine = composeFortnightRecord(() => 0.2, {
+  year: 1935,
+  ageYears: 5,
+  region: "china",
+  settlement: findSettlement("dingxian"),
+  character: { birthYear: 1930, region: "china", climate: "continental", familyClassId: "peasant", cityName: "定縣農村" },
+  narrativeFacts: dingFacts,
+});
+assert(!/麵包/.test(dingLine), `North China 1935 must not use bread: ${dingLine}`);
+assert(!/1930/.test(dingLine), `dingxian chronicle must not reprint birth year: ${dingLine}`);
+
+const locked = lockChronicleToClock("1922年落地。1967年，延吉。配給麵包發綠。", {
+  year: 1967,
+  age: 29,
+  region: "china",
+  city: "延吉",
+  climate: "cold",
+  economy: "poor",
+});
+assert(!/1922/.test(locked) && !/落地/.test(locked), `lock drops foreign year and birth copy: ${locked}`);
+assert(!/麵包/.test(locked), `lock scrubs bread in China: ${locked}`);
+
+const yanjiNow = genesis.generateRandomCharacter({ birthYear: 1967, settlementId: "yanji" });
+assert(yanjiNow.country === "中華人民共和國", `1967 Yanji polity: ${yanjiNow.country}`);
+const taipeiNow = genesis.generateRandomCharacter({ birthYear: 1967, settlementId: "taipei" });
+assert(taipeiNow.country === "中華民國／臺灣省", `1967 Taipei polity: ${taipeiNow.country}`);
+const taipeiJp = genesis.generateRandomCharacter({ birthYear: 1935, settlementId: "taipei" });
+assert(/日本/.test(taipeiJp.country) && /臺灣/.test(taipeiJp.country), `1935 Taipei polity: ${taipeiJp.country}`);
 
 let threw = false;
 try {

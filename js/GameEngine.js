@@ -53,13 +53,14 @@ import {
 } from "./history-engine.js";
 import { currentEnvironmentTags } from "./data/seasons.js";
 import { applyHiddenOutcome, applyLedgerDeltas, ensureLedger, syncLedgerTags } from "./ledger.js";
-import { addCharacterTag, tagsByCategory, visibleTagIds } from "./tag-system.js";
+import { addCharacterTag, TagStore, tagsByCategory, visibleTagIds } from "./tag-system.js";
+import { writeLifeSave } from "./life-persist.js";
 import { socialStanding } from "./social-feedback.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { publicTagLabel } from "./data/ui-zh.js";
 import { createRng, randomSeed } from "./rng.js";
 import { syncMoodTags } from "./mood-engine.js";
-import { findSettlement } from "./settlements.js";
+import { findSettlement, getSettlementCountry } from "./settlements.js";
 import { canonicalizeCountry, formatBirthplace, formatPlaceLabel } from "./demographics-engine.js";
 import { scrubPublicText } from "./data/public-text.js";
 import {
@@ -149,6 +150,7 @@ export class GameEngine {
     const openingDeath = this._checkDeath("五歲剛能自己走路的那兩週，高燒、腹瀉或飢餓把性命收走了。");
     if (openingDeath) return openingDeath.state;
     this.currentEvent = generateTurn(this.rng, this._context());
+    this._persist();
     return this.getGameState();
   }
 
@@ -274,6 +276,8 @@ export class GameEngine {
         contextAwareRandom: true,
         exclusiveOptions: true,
         noOptionRecycling: true,
+        autoLocalPersist: true,
+        noManualReset: true,
         biweeklyTurns: true,
         turnsPerYear: 24,
         daysPerTurn: 14,
@@ -356,6 +360,7 @@ export class GameEngine {
     const blocked = interceptUnsafeOption(option, ctx);
     if (blocked) {
       this.currentEvent = generateTurn(this.rng, ctx);
+      this._persist();
       return { ...blocked, nextEvent: publicEventView(clone(this.currentEvent)) };
     }
     rememberChosenChoice(this.character, option, getLifeStage(ctx.ageYears || 0).id);
@@ -648,6 +653,7 @@ export class GameEngine {
       upheaval: this.character.upheavalState,
     });
     this.currentEvent = generateTurn(this.rng, this._context());
+    this._persist();
 
     return {
       ok: true,
@@ -675,8 +681,11 @@ export class GameEngine {
 
   static fromJSON(data) {
     const engine = new GameEngine({ seed: data.seed, rngState: data.rngState });
-    engine.character = data.character;
+    engine.character = data.character ? clone(data.character) : null;
     if (engine.character) {
+      delete engine.character.tagStore;
+      engine.character.tagStore = TagStore.fromJSON(engine.character.tagRecords || engine.character.tags || []);
+      engine.character.tagRecords = engine.character.tagStore.toJSON();
       ensureLedger(engine.character);
       ensureTraumaState(engine.character);
       ensureSchoolState(engine.character);
@@ -684,14 +693,18 @@ export class GameEngine {
       ensureCareerState(engine.character);
       ensureWorldEventState(engine.character);
       ensureHistoryState(engine.character);
+      ensureLifeProgress(engine.character);
+      if (engine.character.tagRecords) {
+        engine.character.tagsByCategory = tagsByCategory(engine.character);
+      }
     }
-    engine.clock = data.clock;
-    engine.currentEvent = data.currentEvent;
-    engine.lastResult = data.lastResult;
-    engine.journal = data.journal || [];
+    engine.clock = data.clock ? clone(data.clock) : null;
+    engine.currentEvent = data.currentEvent ? clone(data.currentEvent) : null;
+    engine.lastResult = data.lastResult ? clone(data.lastResult) : null;
+    engine.journal = clone(data.journal || []);
     engine.turnCount = data.turnCount || 0;
-    engine.gameOver = data.gameOver || false;
-    engine.ending = data.ending || null;
+    engine.gameOver = Boolean(data.gameOver);
+    engine.ending = data.ending ? clone(data.ending) : null;
     return engine;
   }
 
@@ -710,7 +723,13 @@ export class GameEngine {
       settlement,
       date,
       environment,
+      year: time.year,
       ageYears: time.ageYears,
+      country: canonicalizeCountry(
+        getSettlementCountry(settlement, time.year) || this.character.country || "",
+        time.year,
+        this.character.region || settlement?.region,
+      ),
       ledger: this.character.ledger,
     };
   }
@@ -842,6 +861,7 @@ export class GameEngine {
       options: [],
     };
     this._pushJournal(resolution.title, resolution.epitaph, {});
+    this._persist();
     return {
       ok: true,
       gameOver: true,
@@ -849,6 +869,10 @@ export class GameEngine {
       ending: clone(this.ending),
       state: this.getGameState(),
     };
+  }
+
+  _persist() {
+    writeLifeSave(this);
   }
 
   _endSessionClose() {

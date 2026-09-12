@@ -22,7 +22,7 @@ export const ERA_BANDS = Object.freeze([
     money: "銀元、銅板和人情同一本帳",
   }),
   band("thirties", [1930, 1939], {
-    hunger: "失業隊伍排到巷口，配給麵包發綠也有人搶",
+    hunger: "失業隊伍排到巷口，糧店的份發綠也有人搶",
     illness: "營養不良先腫腿，再輪到咳嗽和瀉",
     family: "飯不夠時先扣最小的那一碗",
     labor: "廠門縮班，田裏的人被徵去修路或挖壕",
@@ -38,7 +38,7 @@ export const ERA_BANDS = Object.freeze([
     money: "金飾縫進衣擺，鈔票一週一個價",
   }),
   band("fifties", [1950, 1959], {
-    hunger: "公共食堂或配給窗口按勺計，排隊比鐘準",
+    hunger: "糧店或施粥處按勺計，排隊比鐘準",
     illness: "單位醫務室先問成分，再問燒到幾度",
     family: "成分和戶口本決定誰能進哪一扇門",
     labor: "工分、指標或加班都寫在牆上",
@@ -73,7 +73,7 @@ export const ERA_BANDS = Object.freeze([
 
 export const CLASS_DETAILS = Object.freeze({
   peasant: {
-    hunger: "糠、樹皮、清水湯，或把發黴的黑麵包切掉綠的再吃",
+    hunger: "糠、樹皮、清水湯，或把發黴的雜糧糊刮乾淨再嚥",
     illness: "請不起大夫，燒和瀉就在炕上熬",
     family: "田埂上的活比年紀先分下來",
     labor: "水桶、鋤頭和看場，從天亮收到天黑",
@@ -81,7 +81,7 @@ export const CLASS_DETAILS = Object.freeze({
     money: "餘糧幾乎沒有，欠的是種籽和人情報",
   },
   worker: {
-    hunger: "廠食堂的冷饅頭、清湯，或把配給麵包泡軟再嚥",
+    hunger: "廠食堂的冷饅頭、清湯，或把剩飯泡軟再嚥",
     illness: "醫務室先問你還能不能上工",
     family: "倒班讓屋裏總有人睡著、總有人餓著",
     labor: "汽笛比雞鳴準，加班寫在出勤簿",
@@ -171,12 +171,12 @@ export const FRAMES = Object.freeze({});
 export const CHOICE_FRAMES = Object.freeze({});
 
 export const FOOD_BY_CLASS = Object.freeze({
-  peasant: "發黴的黑麵包或糠餅",
-  worker: "冷饅頭或配給麵包",
+  peasant: "糠餅或稀粥",
+  worker: "冷饅頭或清湯",
   artisan: "隔夜的鍋底",
   merchant: "舖子裏賣不掉的隔夜貨",
   intellectual: "米缸底的碎米",
-  official: "配給本上剩餘的那一勺",
+  official: "糧本上剩餘的那一勺",
   military: "留下的軍糧餅",
   gentry: "當舖沒收走的陳米",
   immigrant: "兩種口音搶的那口粥",

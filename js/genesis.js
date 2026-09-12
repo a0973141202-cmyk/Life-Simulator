@@ -837,6 +837,8 @@ export class GenesisEngine {
         historicalGeography: true,
         historicalDemographics: true,
         lifeLockUntilSettlement: true,
+        autoLocalPersist: true,
+        noManualReset: true,
         eventCooldown: true,
         chronicleVariance: true,
         dynamicOpeningChronicle: true,

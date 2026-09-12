@@ -408,7 +408,7 @@ export const HISTORICAL_EVENTS = [
     title: "收音機進入尋常巷弄",
     from: [1924, 1],
     to: [1928, 52],
-    regions: null,
+    regions: ["west", "japan", "china", "taiwan", "hongkong"],
     narrative: "鄰居第一次把收音機打開時，整條街的人都探出頭來。",
     effects: { intelligence: 1 },
     classBias: { intellectual: 1, merchant: 1 },

@@ -4,6 +4,7 @@
  * a fail-closed 「國家，城市/聚落」 birthplace stamp.
  */
 import { pickWeighted } from "./rng.js";
+import { canonicalizeCountry } from "./data/polity.js";
 import {
   getSettlementCountry,
   getSettlementDisplayName,
@@ -35,22 +36,7 @@ const KIND_ZH = {
   planned_capital: "規劃首都",
 };
 
-export function canonicalizeCountry(country, year, region) {
-  let out = String(country || "").trim();
-  const y = Number(year);
-  if (!out && region === "china") {
-    out = y <= 1948 ? "中華民國" : "中華人民共和國";
-  }
-  if (out === "中國") {
-    out = y <= 1948 ? "中華民國" : "中華人民共和國";
-  }
-  if (Number.isFinite(y) && y <= 1948) {
-    out = out.replace(/(^|／)中國(?=／|$)/g, "$1中華民國");
-  } else if (Number.isFinite(y)) {
-    out = out.replace(/(^|／)中國(?=／|$)/g, "$1中華人民共和國");
-  }
-  return out;
-}
+export { canonicalizeCountry };
 
 function alreadyRuralName(city) {
   return /農村|漁村|鄉村|村$|鎮$|聚落$|穴居/.test(city);
