@@ -8,10 +8,12 @@ import { socioTagsForOrigin } from "./data/socio-tags-database.js";
 import { emptyMoodState } from "./data/mood-tags-database.js";
 import { rollHouseholdClimate } from "./data/household-climate.js";
 import { ethnicityTag, hookTag, parentTraitTag, traitTag } from "./data/tag-schema.js";
-import { FORBIDDEN_NOTE } from "./data/forbidden-groups.js";
 import { defaultBloodlineRegistry } from "./bloodlines.js";
 import { createLedger } from "./ledger.js";
+import { seedWealth, syncWealthTags } from "./wealth-engine.js";
+import { seedNpcNetwork, syncKinTags } from "./npc-social-engine.js";
 import { emptyTraumaState } from "./trauma-engine.js";
+import { emptyBreakdownState } from "./mental-breakdown-engine.js";
 import { emptySchoolState, rollSchoolClimate } from "./school-engine.js";
 import { emptyCasteState } from "./perp-caste-engine.js";
 import { emptyCareerState } from "./adult-engine.js";
@@ -572,15 +574,15 @@ function kindLabel(kind) {
     metropolis: "大都會",
     city: "城市",
     port: "港口",
-    industrial: "工業聚落",
-    village: "鄉村聚落",
+    industrial: "工廠區",
+    village: "村子",
     slum: "貧民窟",
-    arctic: "極地聚落",
-    underground: "地下聚落",
+    arctic: "極地",
+    underground: "地下街",
     warzone: "戰亂區",
-    camp: "難民／流離營區",
-    planned_capital: "規劃首都",
-  }[kind] || kind;
+    camp: "難民營",
+    planned_capital: "新都",
+  }[kind] || "聚居地";
 }
 
 /**
@@ -605,6 +607,9 @@ export class GenesisEngine {
   generateRandomCharacter(overrides = {}) {
     const rng = this.rng;
     const requestedDate = parseDateInput(overrides.birthDate || overrides);
+    if (requestedDate && (requestedDate.year < YEAR_MIN || requestedDate.year > YEAR_MAX)) {
+      throw new Error(`Birth year must be between ${YEAR_MIN} and ${YEAR_MAX}`);
+    }
     const birthYear = requestedDate?.year ?? this._resolveBirthYear(overrides.birthYear, rng);
     const settlement = localizeSettlement(
       this._resolveSettlement(birthYear, overrides, rng, requestedDate),
@@ -763,6 +768,7 @@ export class GenesisEngine {
       schoolClimate: schoolClimate.map((item) => item.id),
       moodState: emptyMoodState(),
       traumaState: emptyTraumaState(),
+      breakdownState: emptyBreakdownState(),
       schoolState: emptySchoolState(),
       casteState: emptyCasteState(),
       careerState: emptyCareerState(),
@@ -836,9 +842,19 @@ export class GenesisEngine {
         indigenousNaming: true,
         historicalGeography: true,
         historicalDemographics: true,
+        staticWorldDatabase: true,
+        predefinedDemographics: true,
+        liveWeeklyNarrative: true,
+        textLogicMonitor: true,
+        semanticGate: true,
+        logicFilter: true,
+        causalityGate: true,
+        varietyGuard: true,
         lifeLockUntilSettlement: true,
         autoLocalPersist: true,
         noManualReset: true,
+        hallOfFame: true,
+        mementoModal: true,
         eventCooldown: true,
         chronicleVariance: true,
         dynamicOpeningChronicle: true,
@@ -855,6 +871,30 @@ export class GenesisEngine {
         contextAwareRandom: true,
         exclusiveOptions: true,
         noOptionRecycling: true,
+        dynamicOnTheFly: true,
+        zeroHardcodedTemplates: true,
+        liveChoiceMint: true,
+        tagDrivenOnly: true,
+        liveTagMint: true,
+        tagDrivenChoices: true,
+        contextualIntro: true,
+        figureWeave: true,
+        encounterDrivenChoices: true,
+        prerequisiteFilter: true,
+        weightedEventSample: true,
+        tagDecayEngine: true,
+        tagForgetting: true,
+        tagEvolution: true,
+        mentalBreakdown: true,
+        traumaBreakdownSystem: true,
+        eraCrisisIndex: true,
+        wealthEngine: true,
+        wealthCashflow: true,
+        bankruptcyCrisis: true,
+        classMobilityStakes: true,
+        npcSocialNetwork: true,
+        kinAffection: true,
+        kinDeathCrisis: true,
         exclusionTurns: 8,
         biweeklyTurns: true,
         turnsPerYear: 24,
@@ -865,11 +905,9 @@ export class GenesisEngine {
         asymmetricSurvival: true,
         tagInfluenceCap: true,
         maxTagsPerChoice: 3,
-        untaggedBaseline: true,
+        untaggedBaseline: false,
         birthplaceDocumented: true,
         settlementPackCount: Object.keys(SETTLEMENT_PACKS).length,
-        forbiddenNote: FORBIDDEN_NOTE,
-        forbiddenIds: FORBIDDEN_SETTLEMENT_IDS.slice(),
         seed: this.seed,
         ethnicityCatalogSize: this.registry.ethnicities.length,
         traitCatalogSize: this.registry.traits.length,
@@ -878,6 +916,10 @@ export class GenesisEngine {
     };
 
     character.constitution = buildConstitution(character, settlement, birthYear);
+    seedWealth(character);
+    syncWealthTags(character);
+    seedNpcNetwork(character, rng);
+    syncKinTags(character, { year: birthYear });
     return character;
   }
 
@@ -1096,7 +1138,8 @@ export class GenesisEngine {
     store.add({
       id: mixed ? "lineage_mixed" : "lineage_unmixed",
       category: "lineage",
-      label: mixed ? "混血開局" : "單一主血脈",
+      label: mixed ? "父母不同族" : "父母同族",
+      hidden: true,
       reason: mixed ? "父系與母系種族標籤不完全相同。" : "雙親主血脈一致。",
     });
     const birthplaceTag = formatBirthplace(settlement, birthYear);

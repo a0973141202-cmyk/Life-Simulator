@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="light" />
   <title>世紀檔案 · 1920–2025</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=layout-reset-5" />
 </head>
 <body>
   <div class="desk">
@@ -21,6 +21,7 @@
         <p class="masthead-kicker">機密人事檔案 · 禁止外傳</p>
         <div class="masthead-row">
           <h1 class="masthead-title">世紀人事檔案</h1>
+          <button type="button" class="btn-hall" id="btn-hall">紀念館</button>
         </div>
         <div class="masthead-meta">
           <p class="file-no">檔案號 <span id="file-seed">—</span></p>
@@ -75,6 +76,11 @@
                 <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
                 <span class="meter-value" id="stat-reputation">—</span>
               </li>
+              <li class="meter" data-stat="means">
+                <span class="meter-label">家計</span>
+                <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
+                <span class="meter-value" id="stat-means">—</span>
+              </li>
               <li class="meter" data-stat="crisis">
                 <span class="meter-label">危機</span>
                 <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
@@ -96,7 +102,7 @@
           </aside>
 
           <section class="plate tags-plate">
-            <h2 class="plate-title">標籤卷宗</h2>
+            <h2 class="plate-title">街坊記號</h2>
             <p class="plate-note">創傷、出路、時代與人物接觸裡，街坊能叫得出來的記號。</p>
             <div id="tags-container" class="tags" aria-live="polite"></div>
           </section>
@@ -108,9 +114,9 @@
           >
             <h2 class="plate-title" id="figure-log-title">歷史人物接觸紀錄</h2>
             <p class="plate-note">交集、結盟、敵對，以及這條街之後開始跟以前不一樣的說法。</p>
-            <p id="figure-log-status" class="figure-log-status">尚無公開交集。人物只在其發跡窗口與地理範圍內入場。</p>
+            <p id="figure-log-status" class="figure-log-status">街上還沒有人把你和某個名人寫成一夥，也還沒寫成對頭。</p>
             <ul id="figure-log-list" class="figure-log-list"></ul>
-            <p id="figure-inertia" class="figure-inertia" hidden>歷史慣性 0</p>
+            <p id="figure-inertia" class="figure-inertia" hidden></p>
           </section>
         </aside>
 
@@ -151,30 +157,45 @@
     <div class="death-resolution-sheet" role="dialog" aria-modal="true" aria-labelledby="death-resolution-title">
       <p class="death-kicker" id="death-kicker">當事人已死</p>
       <h2 id="death-resolution-title">死亡證明</h2>
-      <dl class="death-facts">
-        <div class="death-fact">
-          <dt>姓名</dt>
-          <dd id="death-name">—</dd>
-        </div>
-        <div class="death-fact">
-          <dt>出生地</dt>
-          <dd id="death-birthplace">—</dd>
-        </div>
-        <div class="death-fact">
-          <dt>在世年歲</dt>
-          <dd id="death-age">—</dd>
-        </div>
-        <div class="death-fact">
-          <dt>結算年份</dt>
-          <dd id="death-year">—</dd>
-        </div>
-        <div class="death-fact death-fact-wide">
-          <dt>死因／結算</dt>
-          <dd id="death-cause">—</dd>
-        </div>
-      </dl>
-      <p class="death-era" id="death-era"></p>
-      <button type="button" class="btn-rebirth" id="btn-rebirth">重新投胎（開新局）</button>
+      <article class="memento-card" id="memento-card">
+        <dl class="death-facts">
+          <div class="death-fact">
+            <dt>姓名</dt>
+            <dd id="death-name">—</dd>
+          </div>
+          <div class="death-fact">
+            <dt>出生地</dt>
+            <dd id="death-birthplace">—</dd>
+          </div>
+          <div class="death-fact">
+            <dt>在世年歲</dt>
+            <dd id="death-age">—</dd>
+          </div>
+          <div class="death-fact">
+            <dt>存活週數</dt>
+            <dd id="death-weeks">—</dd>
+          </div>
+          <div class="death-fact">
+            <dt>結算年份</dt>
+            <dd id="death-year">—</dd>
+          </div>
+          <div class="death-fact death-fact-wide">
+            <dt>死因／結算</dt>
+            <dd id="death-cause">—</dd>
+          </div>
+        </dl>
+        <p class="death-era" id="death-era"></p>
+        <div class="memento-tags" id="memento-tags" aria-label="創傷與稀有標記"></div>
+      </article>
+      <section class="hall-of-fame" id="hall-of-fame" aria-label="紀念館">
+        <h3 class="hall-title">紀念館</h3>
+        <p class="hall-note">已結案的人生留在這部裝置上。點一張卡片，可以再讀一遍。</p>
+        <ul id="hall-of-fame-list" class="hall-list"></ul>
+      </section>
+      <div class="death-actions">
+        <button type="button" class="btn-rebirth" id="btn-rebirth">接受命運，開啟新的一生</button>
+        <button type="button" class="btn-hall-close" id="btn-hall-close" hidden>闔上卷宗</button>
+      </div>
     </div>
   </div>
   <noscript>
@@ -221,6 +242,6 @@
     })();
     // #endregion
   </script>
-  <script type="module" src="./script.js"></script>
+  <script type="module" src="./script.js?v=layout-reset-5"></script>
 </body>
 </html>

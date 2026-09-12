@@ -15,6 +15,7 @@ import { LEDGER_TAG_RULES } from "./data/path-tags-database.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { addCharacterTag, characterHasTag, removeCharacterTag } from "./tag-system.js";
 import { exposeSocialMeters, followSocialMeters, syncSocialTags } from "./social-feedback.js";
+import { applyWealthDelta, ensureWealth } from "./wealth-engine.js";
 
 // #region agent log
 fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"ledger.js:import",message:"ledger-module-evaluating",data:{ok:true},timestamp:Date.now(),hypothesisId:"A"})}).catch(()=>{});
@@ -121,8 +122,8 @@ export function applyHiddenOutcome(character, hidden = {}, time = {}) {
   if (!character || !hidden) return null;
   const meansDelta = Number(hidden.means || 0);
   if (meansDelta) {
-    const before = Number.isFinite(character.means) ? character.means : 50;
-    character.means = clampMeter(before + meansDelta);
+    ensureWealth(character);
+    applyWealthDelta(character, { means: meansDelta }, time);
   }
   return applyLedgerDeltas(ensureLedger(character), {
     reputation: hidden.reputation,

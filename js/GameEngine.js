@@ -24,6 +24,13 @@ import {
 } from "./consequence-engine.js";
 import { publicEventView } from "./hint-engine.js";
 import { applyTrauma, ensureTraumaState, weeklyTraumaPressure } from "./trauma-engine.js";
+import {
+  applyBreakdownChoice,
+  armBreakdownIfNeeded,
+  ensureBreakdownState,
+  weeklySanityCrisis,
+} from "./mental-breakdown-engine.js";
+import { evaluateEraCrisis } from "./history-crisis-engine.js";
 import { applySchoolChoice, ensureSchoolState, stampSchoolTags, weeklySchoolFallout } from "./school-engine.js";
 import { applyPerpCaste, ensureCasteState, stampCasteTags, weeklyCastePressure } from "./perp-caste-engine.js";
 import {
@@ -54,7 +61,13 @@ import {
 import { currentEnvironmentTags } from "./data/seasons.js";
 import { applyHiddenOutcome, applyLedgerDeltas, ensureLedger, syncLedgerTags } from "./ledger.js";
 import { addCharacterTag, TagStore, tagsByCategory, visibleTagIds } from "./tag-system.js";
-import { writeLifeSave } from "./life-persist.js";
+import { seedTagLifecycle, weeklyTagLifecycle } from "./tag-lifecycle-engine.js";
+import { writeHallCard, writeLifeSave } from "./life-persist.js";
+import { composeMementoCard } from "./memento.js";
+import { composeStageClause } from "./dynamic-prose.js";
+import { gateDeathCopy, gateWeeklyOutput, monitorPublicText } from "./text-monitor.js";
+import { mintTagDrivenTriad, remintLockedTriadText } from "./tag-choice-mint.js";
+import { composeWeekEncounter } from "./week-encounter.js";
 import { socialStanding } from "./social-feedback.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { publicTagLabel } from "./data/ui-zh.js";
@@ -74,7 +87,31 @@ import {
   createClockAtAge,
   formatTime,
   getAgeParts,
+  rebuildClock,
 } from "./time.js";
+import { ensureTextHistory } from "./text-history.js";
+import { ensureExclusionBuffer, rememberUnpicked } from "./exclusion-buffer.js";
+import { ensureEventMemory } from "./event-memory.js";
+import {
+  applyWealthCrisisChoice,
+  armWealthCrisis,
+  ensureWealth,
+  publicWealthView,
+  resolveWealthStake,
+  syncWealthTags,
+  wealthPressureScore,
+  weeklyEconomicTick,
+} from "./wealth-engine.js";
+import {
+  applyChoiceKinEffects,
+  applyKinCrisisChoice,
+  armKinCrisis,
+  ensureNpcNetwork,
+  kinPressureScore,
+  publicKinView,
+  syncKinTags,
+  weeklyNpcTick,
+} from "./npc-social-engine.js";
 
 function snapshotTime(clock, character) {
   return formatTime(clock, character);
@@ -141,6 +178,7 @@ export class GameEngine {
     this._pushJournal("出生", opening.birth || describeGenesis(this.character, this.rng), {});
     this._pushJournal("意識萌芽", opening.awakening, {});
     ensureLifeProgress(this.character);
+    seedTagLifecycle(this.character, 0);
     tickLifeProgress(this.character, {
       ageYears: PLAY_AGE_MIN,
       year: this.clock.year,
@@ -208,11 +246,16 @@ export class GameEngine {
       ledgerLine: describeLedger(this.character.ledger, {
         upheavalScore: this.character.upheavalState?.score || 0,
         worldPressure: this.character.worldEventState?.pressure || 0,
+        eraCrisis: this._eraCrisis().score,
       }),
       social: socialStanding(this.character.ledger),
       pressure: crisisPressure(this.character.ledger, {
         upheavalScore: this.character.upheavalState?.score || 0,
         worldPressure: this.character.worldEventState?.pressure || 0,
+        eraCrisis: this._eraCrisis().score,
+        sanityGap: Math.max(0, 40 - (this.character.stats?.sanity ?? 50)),
+        wealthGap: wealthPressureScore(this.character),
+        kinGap: kinPressureScore(this.character, time.year),
       }),
       upheaval: publicUpheavalView(this.character.upheavalState),
       sandbox: {
@@ -237,6 +280,8 @@ export class GameEngine {
         figureEngine: true,
         butterflyEngine: true,
         tagDrivenChoices: true,
+        tagDrivenOnly: true,
+        liveTagMint: true,
         uniqueChoicePool: true,
         organicBloodlineChoices: true,
         constitutionEngine: true,
@@ -254,7 +299,7 @@ export class GameEngine {
         asymmetricSurvival: true,
         tagInfluenceCap: true,
         maxTagsPerChoice: 3,
-        untaggedBaseline: true,
+        untaggedBaseline: false,
         culturalNameMatching: true,
         indigenousNaming: true,
         historicalGeography: true,
@@ -276,8 +321,39 @@ export class GameEngine {
         contextAwareRandom: true,
         exclusiveOptions: true,
         noOptionRecycling: true,
+        dynamicOnTheFly: true,
+        zeroHardcodedTemplates: true,
+        liveChoiceMint: true,
+        staticWorldDatabase: true,
+        predefinedDemographics: true,
+        liveWeeklyNarrative: true,
+        textLogicMonitor: true,
+        semanticGate: true,
+        logicFilter: true,
+        causalityGate: true,
+        varietyGuard: true,
+        contextualIntro: true,
+        figureWeave: true,
+        encounterDrivenChoices: true,
+        prerequisiteFilter: true,
+        weightedEventSample: true,
+        tagDecayEngine: true,
+        tagForgetting: true,
+        tagEvolution: true,
+        mentalBreakdown: true,
+        traumaBreakdownSystem: true,
+        eraCrisisIndex: true,
+        wealthEngine: true,
+        wealthCashflow: true,
+        bankruptcyCrisis: true,
+        classMobilityStakes: true,
+        npcSocialNetwork: true,
+        kinAffection: true,
+        kinDeathCrisis: true,
         autoLocalPersist: true,
         noManualReset: true,
+        hallOfFame: true,
+        mementoModal: true,
         biweeklyTurns: true,
         turnsPerYear: 24,
         daysPerTurn: 14,
@@ -289,7 +365,12 @@ export class GameEngine {
         intensity: this.character.traumaState?.intensity || 0,
         domains: clone(this.character.traumaState?.domains || {}),
         tags: (this.character.tagsByCategory?.trauma || []).slice(),
+        breakdownPending: Boolean(this.character.breakdownState?.pending),
+        breakdownEpisodes: this.character.breakdownState?.episodes || 0,
       },
+      eraCrisis: this._eraCrisis(),
+      wealth: publicWealthView(this.character),
+      kin: publicKinView(this.character, snapshotTime(this.clock, this.character).year),
       school: {
         enmity: this.character.schoolState?.enmity || 0,
         heat: this.character.schoolState?.heat || 0,
@@ -364,15 +445,16 @@ export class GameEngine {
       return { ...blocked, nextEvent: publicEventView(clone(this.currentEvent)) };
     }
     rememberChosenChoice(this.character, option, getLifeStage(ctx.ageYears || 0).id);
+    rememberUnpicked(this.character, event.options, choiceIndex);
     if (option.turningPointId) {
       completeTurningPoint(this.character, option.turningPointId, ctx);
       const point = TURNING_POINTS[option.turningPointId];
-      if (point?.journal) this._pushJournal(point.title, point.journal, {});
+      if (point) this._pushJournal(point.title, composeStageClause(this.rng, ctx), {});
       if (point?.addTags?.length) this._gainTags(point.addTags);
     }
 
     const decay = weeklyConsequenceTick(this.character, ctx.time);
-    const resolved = resolveOption(this.rng, option, this.character);
+    const resolved = resolveOption(this.rng, option, this.character, ctx);
     const combinedEffects = { ...event.passiveEffects };
     for (const [key, value] of Object.entries(resolved.effects)) {
       combinedEffects[key] = (combinedEffects[key] || 0) + value;
@@ -383,6 +465,43 @@ export class GameEngine {
     this.character.stats = appliedBundle.stats;
     const karma = applyChoiceConsequences(this.rng, this.character, option, ctx.time);
     const trauma = applyTrauma(this.character, option.trauma, ctx.time);
+    const breakdown = option.breakdownIncident
+      ? applyBreakdownChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
+      : { applied: [], notes: [], tags: [] };
+    const wealthCrisis = option.wealthCrisis
+      ? applyWealthCrisisChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
+      : { applied: [], notes: [], tags: [] };
+    const wealthStake = option.wealthStake
+      ? resolveWealthStake(this.rng, this.character, option, { ...ctx, time: ctx.time })
+      : { triggered: false, note: "" };
+    const kinCrisis = option.kinCrisis
+      ? applyKinCrisisChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
+      : { applied: [], notes: [], tags: [] };
+    applyChoiceKinEffects(this.character, option, { ...ctx, year: ctx.year || ctx.time?.year });
+    const economy = weeklyEconomicTick(this.character, { ...ctx, ...this._context() });
+    const wealthSync = syncWealthTags(this.character);
+    armWealthCrisis(this.character, {
+      ...ctx,
+      turnCount: this.turnCount,
+      year: ctx.year || ctx.time?.year,
+    });
+    if (economy.snapshot?.band === "bankrupt" || economy.snapshot?.debt >= 80) {
+      const dripW = applyEffects(this.character.stats, { sanity: -1 }, this.character, ctx.time);
+      this.character.stats = dripW.stats;
+      appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) + (dripW.applied.sanity || 0);
+    }
+    const kinWeek = weeklyNpcTick(this.character, { ...ctx, ...this._context(), turnCount: this.turnCount }, this.rng);
+    const kinSync = syncKinTags(this.character, { year: ctx.year || ctx.time?.year });
+    armKinCrisis(this.character, {
+      ...ctx,
+      turnCount: this.turnCount,
+      year: ctx.year || ctx.time?.year,
+    });
+    if (kinWeek.death || this.character.npcNetwork?.pendingCrisis) {
+      const dripK = applyEffects(this.character.stats, { sanity: -2 }, this.character, ctx.time);
+      this.character.stats = dripK.stats;
+      appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) + (dripK.applied.sanity || 0);
+    }
     const school = option.schoolIncident
       ? applySchoolChoice(this.character, option, ctx.time, this.rng)
       : { applied: stampSchoolTags(this.character, option.addTags || []), notes: [], ending: null };
@@ -491,6 +610,36 @@ export class GameEngine {
       this.character.stats = dripC.stats;
       appliedBundle.applied.mood = (appliedBundle.applied.mood || 0) + (dripC.applied.mood || 0);
     }
+    const eraNow = evaluateEraCrisis({ ...ctx, ...this._context(), upheaval: this.character.upheavalState });
+    const sanityWeek = weeklySanityCrisis(this.character, {
+      ...ctx,
+      eraCrisis: eraNow,
+      pressure: karma.pressure,
+    });
+    if (sanityWeek.moodDelta) {
+      const dripS = applyEffects(this.character.stats, { sanity: sanityWeek.moodDelta }, this.character, ctx.time);
+      this.character.stats = dripS.stats;
+      appliedBundle.applied.mood = (appliedBundle.applied.mood || 0) + (dripS.applied.mood || 0);
+    }
+    armBreakdownIfNeeded(this.character, {
+      ...ctx,
+      turnCount: this.turnCount,
+      eraCrisis: eraNow,
+      pressure: crisisPressure(this.character.ledger, {
+        upheavalScore: this.character.upheavalState?.score || 0,
+        worldPressure: this.character.worldEventState?.pressure || 0,
+        eraCrisis: eraNow.score,
+        sanityGap: Math.max(0, 40 - (this.character.stats?.sanity ?? 50)),
+        wealthGap: wealthPressureScore(this.character),
+        kinGap: kinPressureScore(this.character, ctx.year || ctx.time?.year),
+      }),
+    });
+    const lifecycle = weeklyTagLifecycle(this.character, {
+      ...ctx,
+      pressure: karma.pressure,
+      turnCount: this.turnCount,
+      ageYears: ctx.ageYears,
+    }, { option, turnCount: this.turnCount });
     if (this.character.tagRecords) {
       this.character.tagsByCategory = tagsByCategory(this.character);
     }
@@ -529,7 +678,7 @@ export class GameEngine {
       ageYears: beforeTime.ageYears,
       choiceIndex,
       choiceText: option.trueText || option.text,
-      followUpText: scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes].filter(Boolean).join(" ")),
+      followUpText: monitorPublicText(this.rng, scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes, sanityWeek.note, economy.note, wealthStake.note, ...(breakdown.notes || []), ...(wealthCrisis.notes || []), ...(kinCrisis.notes || []), ...(kinWeek.notes || []), ...(lifecycle.notes || [])].filter(Boolean).join(" ")), ctx, { kind: "follow" }),
       effects: combinedEffects,
       applied: appliedBundle.applied,
       tagsGained: [
@@ -538,6 +687,11 @@ export class GameEngine {
         ...((moodSync.changed || []).filter((item) => item.action === "add").map((item) => item.tag)),
         ...((karma.tagsChanged || []).filter((item) => item.action === "add").map((item) => item.tag)),
         ...((trauma.applied || []).map((item) => item.id)),
+        ...((breakdown.applied || []).map((item) => item.id || item)),
+        ...((wealthCrisis.applied || []).map((item) => item.id || item)),
+        ...((kinCrisis.applied || []).map((item) => item.id || item)),
+        ...((wealthSync.changed || []).filter((item) => item.action === "add").map((item) => item.tag)),
+        ...((kinSync.changed || []).filter((item) => item.action === "add").map((item) => item.tag)),
         ...(school.applied || []),
         ...(schoolWeek.addTags || []),
         ...(caste.applied || []),
@@ -547,11 +701,19 @@ export class GameEngine {
         ...(worldWeek.addTags || []),
         ...(figure.applied || []),
         ...(historyWeek.addTags || []),
+        ...(lifecycle.tagsGained || []),
       ],
       tagsLost: [
         ...(moodSync.changed || []).filter((item) => item.action === "remove").map((item) => item.tag),
         ...(karma.tagsChanged || []).filter((item) => item.action === "remove").map((item) => item.tag),
+        ...(lifecycle.tagsLost || []),
+        ...((wealthSync.changed || []).filter((item) => item.action === "remove").map((item) => item.tag)),
+        ...((kinSync.changed || []).filter((item) => item.action === "remove").map((item) => item.tag)),
       ],
+      tagLifecycle: {
+        faded: (lifecycle.changed || []).filter((item) => item.action === "fade").map((item) => item.tag),
+        evolved: (lifecycle.changed || []).filter((item) => item.action === "evolve").map((item) => item.tag),
+      },
       moodTags: moodSync.changed,
       triggeredRisk: resolved.triggeredRisk,
       worldContext: event.worldContext,
@@ -565,6 +727,8 @@ export class GameEngine {
         applied: (trauma.applied || []).map((item) => item.id),
         intensity: this.character.traumaState?.intensity || 0,
         weeklyNote: traumaWeek.note || "",
+        breakdown: Boolean(option.breakdownIncident),
+        breakdownTags: (breakdown.tags || []).slice(),
       },
       school: {
         stance: option.stance || null,
@@ -652,6 +816,20 @@ export class GameEngine {
       character: this.character,
       upheaval: this.character.upheavalState,
     });
+    if (getLifeStage(ageNow.ageYears).id !== getLifeStage(beforeTime.ageYears).id) {
+      weeklyTagLifecycle(this.character, {
+        ...this._context(),
+        ageYears: ageNow.ageYears,
+        pressure: karma.pressure,
+      }, {
+        option,
+        stageOnly: true,
+        stageId: getLifeStage(ageNow.ageYears).id,
+      });
+      if (this.character.tagRecords) {
+        this.character.tagsByCategory = tagsByCategory(this.character);
+      }
+    }
     this.currentEvent = generateTurn(this.rng, this._context());
     this._persist();
 
@@ -682,29 +860,80 @@ export class GameEngine {
   static fromJSON(data) {
     const engine = new GameEngine({ seed: data.seed, rngState: data.rngState });
     engine.character = data.character ? clone(data.character) : null;
+    engine.turnCount = data.turnCount || 0;
     if (engine.character) {
       delete engine.character.tagStore;
       engine.character.tagStore = TagStore.fromJSON(engine.character.tagRecords || engine.character.tags || []);
       engine.character.tagRecords = engine.character.tagStore.toJSON();
       ensureLedger(engine.character);
       ensureTraumaState(engine.character);
+      ensureBreakdownState(engine.character);
+      ensureWealth(engine.character);
+      ensureNpcNetwork(engine.character);
       ensureSchoolState(engine.character);
       ensureCasteState(engine.character);
       ensureCareerState(engine.character);
       ensureWorldEventState(engine.character);
       ensureHistoryState(engine.character);
       ensureLifeProgress(engine.character);
+      seedTagLifecycle(engine.character, engine.turnCount || 0);
+      ensureTextHistory(engine.character);
+      ensureExclusionBuffer(engine.character);
+      ensureEventMemory(engine.character);
+      if (engine.character.genesisMeta) {
+        delete engine.character.genesisMeta.forbiddenNote;
+        delete engine.character.genesisMeta.forbiddenIds;
+      }
       if (engine.character.tagRecords) {
         engine.character.tagsByCategory = tagsByCategory(engine.character);
       }
     }
-    engine.clock = data.clock ? clone(data.clock) : null;
+    engine.clock = data.clock && engine.character
+      ? rebuildClock(data.clock, engine.character)
+      : (data.clock ? clone(data.clock) : null);
+    if (engine.character && engine.clock) {
+      const settlement = findSettlement(engine.character.cityId);
+      engine.character.country = canonicalizeCountry(
+        getSettlementCountry(settlement, engine.clock.year) || engine.character.country || "",
+        engine.clock.year,
+        engine.character.region || settlement?.region,
+      );
+      ensureChoiceMemory(engine.character, getLifeStage(snapshotTime(engine.clock, engine.character).ageYears).id);
+    }
     engine.currentEvent = data.currentEvent ? clone(data.currentEvent) : null;
     engine.lastResult = data.lastResult ? clone(data.lastResult) : null;
     engine.journal = clone(data.journal || []);
-    engine.turnCount = data.turnCount || 0;
     engine.gameOver = Boolean(data.gameOver);
     engine.ending = data.ending ? clone(data.ending) : null;
+    if (engine.currentEvent && engine.character && engine.clock && !engine.gameOver) {
+      const ctx = engine._context();
+      ctx.weekEncounter = composeWeekEncounter(engine.rng, ctx);
+      const locked = Boolean(
+        engine.currentEvent.breakdown?.lockedTriad
+        || engine.currentEvent.wealthCrisis?.lockedTriad
+        || engine.currentEvent.kinCrisis?.lockedTriad
+        || engine.currentEvent.school?.lockedTriad
+        || engine.currentEvent.adult?.lockedTriad
+        || engine.currentEvent.worldEvent?.lockedTriad
+        || engine.currentEvent.figure?.lockedTriad
+        || engine.currentEvent.turningPoint?.lockedTriad,
+      );
+      const reminted = locked
+        ? remintLockedTriadText(engine.rng, engine.currentEvent.options || [], ctx)
+        : mintTagDrivenTriad(engine.rng, ctx);
+      engine.currentEvent = {
+        ...engine.currentEvent,
+        ...gateWeeklyOutput(engine.rng, {
+          ...engine.currentEvent,
+          options: reminted,
+        }, ctx),
+      };
+    } else if (engine.currentEvent && engine.character && engine.clock) {
+      engine.currentEvent = {
+        ...engine.currentEvent,
+        ...gateWeeklyOutput(engine.rng, engine.currentEvent, engine._context()),
+      };
+    }
     return engine;
   }
 
@@ -725,6 +954,8 @@ export class GameEngine {
       environment,
       year: time.year,
       ageYears: time.ageYears,
+      cityId: this.character.cityId,
+      turnCount: this.turnCount,
       country: canonicalizeCountry(
         getSettlementCountry(settlement, time.year) || this.character.country || "",
         time.year,
@@ -828,9 +1059,13 @@ export class GameEngine {
       detail,
       era,
       upheaval: this.character.upheavalState,
+      eraCrisis: this._eraCrisis(),
       playAgeCap: effectivePlayAgeMax(),
       temporaryCap: isTemporaryPlayCap(),
     });
+    const deathCtx = { ...this._context(), year: time.year, ageYears: time.ageYears };
+    resolution.epitaph = gateDeathCopy(this.rng, resolution.epitaph, deathCtx);
+    resolution.cause = monitorPublicText(this.rng, resolution.cause, deathCtx, { kind: "death" });
     this.gameOver = true;
     this.character.alive = !fatal;
     if (fatal) this.character.causeOfDeath = reason;
@@ -861,6 +1096,16 @@ export class GameEngine {
       options: [],
     };
     this._pushJournal(resolution.title, resolution.epitaph, {});
+    const memento = composeMementoCard({
+      character: this.character,
+      time,
+      ending: this.ending,
+      resolution,
+      seed: this.seed,
+      turnCount: this.turnCount,
+    });
+    this.ending.memento = memento;
+    writeHallCard(memento);
     this._persist();
     return {
       ok: true,
@@ -869,6 +1114,29 @@ export class GameEngine {
       ending: clone(this.ending),
       state: this.getGameState(),
     };
+  }
+
+  _eraCrisis() {
+    if (!this.character || !this.clock) {
+      return { score: 0, level: "calm", pulses: [], shocks: [], matches: [], noHalo: true };
+    }
+    const time = snapshotTime(this.clock, this.character);
+    const settlement = findSettlement(this.character.cityId);
+    return evaluateEraCrisis({
+      year: time.year,
+      week: time.week,
+      region: this.character.region,
+      country: canonicalizeCountry(
+        getSettlementCountry(settlement, time.year) || this.character.country || "",
+        time.year,
+        this.character.region || settlement?.region,
+      ),
+      familyClassId: this.character.familyClassId,
+      tags: this.character.tags,
+      character: this.character,
+      settlement,
+      geoBand: this.character.worldEventState?.geoBand,
+    });
   }
 
   _persist() {

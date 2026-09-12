@@ -20,6 +20,7 @@ import {
   ADAPTATION_WEIGHTS,
   HEALTH_DISEASE_CURVE,
   MORTALITY_TAG_WEIGHTS,
+  SANITY_SURVIVAL_CURVE,
   WEALTH_HUNGER_CURVE,
 } from "./data/mortality-tag-weights.js";
 import { MORTALITY_CAUSE_TEXTS } from "./data/mortality-causes.js";
@@ -201,10 +202,13 @@ export function evaluateWeeklyMortality(ctxInput) {
 
   const health = ctx.stats.health ?? 50;
   const wealth = ctx.character?.means ?? ctx.stats?.means ?? 50;
+  const sanity = ctx.stats.sanity ?? ctx.stats.mood ?? 50;
   const healthMult = lerpCurve(health, HEALTH_DISEASE_CURVE.at0, HEALTH_DISEASE_CURVE.at100);
   const wealthMult = lerpCurve(wealth, WEALTH_HUNGER_CURVE.at0, WEALTH_HUNGER_CURVE.at100);
+  const sanityMult = lerpCurve(sanity, SANITY_SURVIVAL_CURVE.at0, SANITY_SURVIVAL_CURVE.at100);
   for (const key of HEALTH_DISEASE_CURVE.causes) annual[key] *= healthMult;
   for (const key of WEALTH_HUNGER_CURVE.causes) annual[key] *= wealthMult;
+  for (const key of SANITY_SURVIVAL_CURVE.causes) annual[key] *= sanityMult;
 
   const wanted = ctx.ledger.wanted || 0;
   const heat = ctx.ledger.heat || 0;

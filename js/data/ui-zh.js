@@ -98,6 +98,16 @@ export const TAG_ID_ZH = Object.freeze({
   acquired_infamy: "惡名遠播",
   acquired_low_opinion: "輿論翻臉",
   acquired_low_credit: "信用見底",
+  acquired_desperate_survival: "絕境求生",
+  acquired_starvation_thrift: "餓慣了的胃口",
+  acquired_plague_antibody: "熱病抗體",
+  acquired_pain_focus: "痛裡還能動手",
+  acquired_cold_forged: "冷裡活下來",
+  acquired_heat_forged: "熱裡還能走",
+  trauma_ptsd: "驚悸未褪",
+  trauma_melancholia: "沉鬱難起",
+  trauma_persecution: "總覺得有人在抓",
+  trauma_persona_crack: "性子被擰歪了",
   path_crime: "地下路徑",
   path_narcotics: "貨流帝國",
   path_militant: "武裝政治",
@@ -111,11 +121,20 @@ export const TAG_ID_ZH = Object.freeze({
   social_ordinary: "路人級",
   social_trusted: "還被肯認",
   social_courted: "被人靠近",
+  lineage_mixed: "混籍出身",
+  lineage_unmixed: "單系出身",
+  household_hungry: "家裏缺糧",
+  household_violent: "屋裏動手",
+  class_intellectual: "知識分子",
+  class_worker: "勞工戶",
+  class_peasant: "務農戶",
+  class_merchant: "行商戶",
 });
 
 const HAN_RE = /[\u4e00-\u9fff]/;
 const DEBUG_ID_RE = /^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)+$/;
 const DEBUG_WORD_RE = /^(calm|watch|crisis|ruin|idle|lawful|commerce|crime|disease|hunger|accident|violence|environment|senescence|collapse|tropical|subtropical|temperate|continental|polar|arctic)$/i;
+const EMBEDDED_TAG_ID_RE = /\b([a-z]+(?:_[a-z0-9]+)+)\b/g;
 
 export function hasHan(text) {
   return HAN_RE.test(String(text || ""));
@@ -142,12 +161,20 @@ function lookupPrefixed(id) {
 }
 
 export function publicTagLabel(record = {}) {
-  const raw = record.label || "";
-  if (hasHan(raw) && !isDebugCode(raw)) return raw.trim();
-  const fromId = lookupPrefixed(record.id);
+  const rec = typeof record === "string"
+    ? { id: record }
+    : (record && typeof record === "object" ? record : {});
+  const id = String(rec.id || "").trim();
+  const raw = String(rec.label || "").trim();
+  if (hasHan(raw) && !isDebugCode(raw)) return raw;
+  const fromId = lookupPrefixed(id) || lookupPrefixed(raw);
   if (fromId) return fromId;
-  const fromLabel = lookupPrefixed(raw);
-  if (fromLabel) return fromLabel;
+  if (id.startsWith("lineage_")) return "出身";
+  if (id.startsWith("ethnicity_")) return "族裔";
+  if (id.startsWith("household_")) return "家裏的規矩";
+  if (id.startsWith("trauma_")) return "舊傷";
+  if (id.startsWith("socio_")) return "門戶光景";
+  if (DEBUG_ID_RE.test(id) || DEBUG_ID_RE.test(raw)) return "";
   return "";
 }
 
@@ -189,6 +216,8 @@ export function sanitizePublicLine(line) {
   for (const [id, label] of Object.entries(GEO_BAND_ZH)) {
     text = text.replaceAll(` · ${id}／`, ` · ${label}／`);
   }
-  text = text.replace(/Sentinelese/g, "北哨兵島居民");
+  text = text.replace(EMBEDDED_TAG_ID_RE, (id) => publicTagLabel({ id }) || "出身");
+  text = text.replace(/Sentinelese/gi, "");
+  text = text.replace(/北哨兵島?(?:居民)?/g, "");
   return scrubPublicText(text);
 }

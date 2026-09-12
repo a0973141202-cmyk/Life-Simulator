@@ -161,7 +161,7 @@ export const TRAUMA_HOME_SLICES = [
     trauma: { tags: ["trauma_hypervigilance", "trauma_flinch_body", "trauma_self_blame"], intensity: 9, domain: "home" },
     sensory: "家具的位置還是昨天的。空氣不是。碗碎了以後，第一個被點名的是離手最近的小孩。",
     procedure: "沒有長期氣候標籤的家也可能有這一週。打完有人會說「就這一次」。一次已經足夠改寫睡眠。你被要求當它沒發生，好讓明天的早餐看起來像連續劇。",
-    social: "親戚仍稱讚這家人齊。齊是對外的油漆。油漆底下的牆不會自己報案。",
+    social: "親戚仍說這家人齊。屋裏動手的事，沒人會去衙門講。",
     logic: "偶發暴力仍是暴力。遊戲不把它寫成例外所以無害；它寫入標籤，因為神經系統不讀家庭宣傳。",
     risk: { chance: 0.16, effects: { health: -5, mood: -2 }, text: "瘀青需要謊言。謊言成為你與學校之間的第一層牆。" },
   }),

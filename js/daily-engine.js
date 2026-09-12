@@ -13,6 +13,7 @@ import { ctxHasTag } from "./choice-pool.js";
 import { dailyAudienceAllowed, contentAllowedForAge } from "./age-gate.js";
 import { childhoodClimate } from "./early-child-filter.js";
 import { filterCooledPool } from "./event-memory.js";
+import { scrubPublicText } from "./data/public-text.js";
 import { composeSituationLine } from "./dynamic-prose.js";
 
 const PHASE_ORDER = ["dawn", "transit", "site", "meal", "paper", "social", "body", "wait", "night"];
@@ -229,15 +230,15 @@ export function renderDailyNarrative(texture, ctx = null, rng = null) {
     return weight(b) - weight(a);
   });
   const lead = ranked[0];
-  const roll = typeof rng === "function" ? rng : (() => 0.33);
-  const site = texture.state?.label ? `${texture.state.label}。` : "";
-  const body = composeSituationLine(roll, ctx || {});
-  const system = `${site}${body}`.trim();
-  if (!ctx) return system;
+  renderSliceLead(lead);
+  if (!ctx) return "";
+  const body = scrubPublicText(composeSituationLine(typeof rng === "function" ? rng : (() => 0.33), ctx));
+  if (!body) return "";
   const socialLead = lead.phase === "social" || Boolean(lead.social) || Boolean(lead.trauma);
-  if (!socialLead) return system;
-  return attachNpcSpeech(system, ctx, {
+  if (!socialLead) return body;
+  return attachNpcSpeech(body, ctx, {
     daily: true,
+    skipGloss: true,
     phase: lead.phase,
     state: texture.state?.id,
     id: lead.id,

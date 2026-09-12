@@ -8,6 +8,8 @@ import { chronicleLineKey } from "./chronicle-key.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
+import { pickLiveChoiceLane } from "./text-logic-filter.js";
+import { textsTooSimilar } from "./choice-similarity.js";
 
 function atom(rng, list, fallback = "") {
   const pool = (list || []).filter(Boolean);
@@ -175,17 +177,40 @@ function climateClause(facts = {}, current = []) {
   return "";
 }
 
-function laborOf(facts) {
+function laborOf(facts, rng) {
   if ((facts.age || 0) <= 7) return "打水或看火";
-  return (LABOR_ATOM[facts.classId] || LABOR_ATOM.worker)[0];
+  const list = LABOR_ATOM[facts.classId] || LABOR_ATOM.worker;
+  return atom(rng, list, list[0]);
+}
+
+function householdWho(facts = {}) {
+  if (facts.motherAlive && facts.motherName) return `母親${facts.motherName}`;
+  if (facts.fatherAlive && facts.fatherName) return `父親${facts.fatherName}`;
+  if (facts.motherAlive) return "母親";
+  if (facts.fatherAlive) return "父親";
+  const kin = (facts.kinLiving || []).find((row) => row.role === "guardian" || row.role === "spouse" || row.role === "sibling");
+  if (kin?.name) return `${kin.role === "spouse" ? "伴侶" : (kin.role === "guardian" ? "監護人" : "家裏的人")}${kin.name}`;
+  return "家裏還能走動的人";
+}
+
+function kinWord(facts = {}) {
+  return facts.orphan ? "這戶剩下的人" : "最小的那碗";
 }
 
 function parentClause(facts) {
   if (!facts.hasFatherRecord && !facts.hasMotherRecord) return "";
   if (facts.orphan) return "父母都不在了，這戶只剩還能走動的人";
   const bits = [];
-  if (facts.hasFatherRecord) bits.push(facts.fatherAlive ? "父親還在" : "父親已不在");
-  if (facts.hasMotherRecord) bits.push(facts.motherAlive ? "母親還在" : "母親已不在");
+  if (facts.hasFatherRecord) {
+    bits.push(facts.fatherAlive
+      ? (facts.fatherName ? `父親${facts.fatherName}還在` : "父親還在")
+      : "父親已不在");
+  }
+  if (facts.hasMotherRecord) {
+    bits.push(facts.motherAlive
+      ? (facts.motherName ? `母親${facts.motherName}還在` : "母親還在")
+      : "母親已不在");
+  }
   return bits.join("，");
 }
 
@@ -212,7 +237,7 @@ function historyClause(rng, facts) {
   }
   const unique = [...new Set(threadBits)].slice(0, 2);
   if (!unique.length) return "";
-  return `街上能核對的是${unique.join("、")}`;
+  return `街上這兩週看得到的是${unique.join("、")}`;
 }
 
 function classClause(facts) {
@@ -238,8 +263,8 @@ export function composeFortnightRecord(rng, ctx = {}) {
   const current = ctx.currentTags || ctx.environment?.tags || [];
   const food = facts.hungry || facts.edema ? `鍋裡常見的是${foodOf(facts)}` : "";
   const history = facts.pulseTitle
-    ? `時局：${facts.pulseTitle}`
-    : (facts.upheavalLabel ? `時局：${facts.upheavalLabel}` : "");
+    ? `街上這兩週，${facts.pulseTitle}`
+    : (facts.upheavalLabel ? `街上這兩週，${facts.upheavalLabel}` : "");
   const text = lockChronicleToClock(joinSentences([
     `這兩週是${facts.year}年，${facts.place}。當事人 ${facts.age} 歲`,
     `住在${facts.housing}`,
@@ -299,6 +324,46 @@ export function composeSituationLine(rng, ctx = {}) {
   ]), facts);
 }
 
+export function composeStatusRecord(rng, ctx = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  const sanity = Number(facts.sanity ?? ctx.stats?.sanity ?? 50);
+  const tags = facts.tags || [];
+  const bits = [];
+  if (facts.health <= 25) bits.push(`體格撐不住：在${facts.city}走路會喘，傷口或發燒都還沒退`);
+  else if (facts.health >= 80) bits.push(`體格還撐得住，能走完${facts.year}年這兩週要走的路`);
+  if (sanity <= 25) bits.push("神智差：睡不好、提不起勁、容易發呆或哭");
+  else if (sanity >= 80) bits.push("這兩週還能睡得著，話也說得清楚");
+  bits.push(bodyClause(rng, facts));
+  if (facts.householdHarsh || tags.some((tag) => String(tag).startsWith("household_"))) {
+    bits.push("屋裏仍有人動手、鎖門，或把飯扣下來");
+  }
+  if (tags.some((tag) => String(tag).startsWith("school_")) && (facts.age || 0) <= 17) {
+    bits.push(`${facts.city}的院子裏仍有人攔路或勒索`);
+  }
+  if (tags.some((tag) => String(tag).startsWith("caste_"))) {
+    bits.push(`${facts.city}有人在核對你是不是「那一掛」，核對完會收費或動手`);
+  }
+  if (tags.includes("acquired_wanted") || tags.includes("path_crime")) {
+    bits.push(`${facts.city}這兩週，通緝或地下買賣正在改寫你能走的路`);
+  }
+  const hist = historyClause(rng, facts);
+  if (hist) bits.push(hist);
+  return lockChronicleToClock(joinSentences(bits.slice(0, 4)), facts);
+}
+
+export function composeFollowBeat(rng, ctx = {}, extra = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  if (extra.advantage) {
+    return lockChronicleToClock(`${facts.year}年在${facts.city}，這一步比旁人少碰一次關卡`, facts);
+  }
+  if (extra.strain) {
+    return lockChronicleToClock(`${facts.year}年在${facts.city}，這一步比旁人更難走完`, facts);
+  }
+  return composeLiveFollowUp(rng, ctx, extra);
+}
+
 export function composeStageClause(rng, ctx = {}) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const age = facts.age || 0;
@@ -314,49 +379,283 @@ export function composeStageClause(rng, ctx = {}) {
   return lockChronicleToClock(`${facts.year}年沒有多餘的下午：找工、撐面子、或被人抓住把柄，這一期只能先做一件。`, facts);
 }
 
-export function composeChoiceLine(rng, ctx = {}, kind = "labor", index = 0) {
-  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+function resolveChoiceDirection(ctx = {}, index = 0, extra = {}) {
+  const named = String(extra.direction || ctx.direction || "").trim();
+  if (named) return named;
+  const dirs = ["endure", "seek", "guard", "resist", "flee", "help"];
+  const salt = Number(index || 0) + Number(ctx.turn || ctx.week || 0) * 3;
+  return dirs[((salt % dirs.length) + dirs.length) % dirs.length];
+}
+
+function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
   const food = foodOf(facts);
-  const city = facts.city;
-  const table = {
-    hunger: [
-      `把${food}吃掉，不留給下一頓`,
-      `去${city}排隊，把能買到的帶回來`,
-      "把鍋底的糊刮乾淨再嚥",
-    ],
-    illness: [
-      "用冷毛巾把額頭的熱降下來",
-      "去問還有沒有退燒藥或止瀉的粉",
-      "躺著把力氣留給去廁所那一下",
-    ],
-    family: [
-      "按家裏交代的把水打回來、把碗洗乾淨",
-      "把門栓插上，聽見拍門先裝作沒人",
-      "把最小的那碗護住，不讓人先扣走",
-    ],
-    labor: [
-      `把這兩週的${laborOf(facts)}先做完再說話`,
-      "手裂了仍把活交上去",
-      "按汽笛或日頭去上工，遲到的罰金付不起",
-    ],
-    play: [
-      "趁大人沒喊之前，在巷口踢一輪罐子",
-      "帶著弟妹在能去的那條巷走一圈",
-      "聽見口令就把石子收進口袋散開",
-    ],
-    money: [
-      "先付會砸門的那一筆：房租、糧或罰",
-      `把能當的東西拿去換這兩週的${food}`,
-      "向熟臉求一點賒",
-    ],
+  const labor = laborOf(facts, rng);
+  const city = facts.city || "此地";
+  const who = householdWho(facts);
+  const kin = kinWord(facts);
+  const year = facts.year || "";
+  const age = facts.age || 0;
+  const housing = facts.housing || "屋裏";
+  const tagFocus = String(extra.tagFocus || "");
+  let tagLabel = String(extra.tagLabel || "").replace(/〔[^〕]*〕/g, "").trim();
+  if (/^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]+)+$/.test(tagLabel) || !/[\u4e00-\u9fff]/.test(tagLabel)) {
+    tagLabel = "";
+  }
+  const drivers = (extra.driverTags || []).map(String);
+  const has = (re) => drivers.some((tag) => re.test(tag));
+  // Primary lane wins: overlap tags must not steal the focused branch.
+  const focus = (cats, re) => {
+    if (tagFocus) return cats.includes(tagFocus);
+    return has(re);
   };
-  const pool = table[kind] || table.labor;
-  const line = scrubLocalCopy(pool[index % pool.length] || pool[0], facts);
+
+  if (focus(["trauma"], /^trauma_/)) {
+    if (dir === "flee") return `帶著還在身上的傷，先離開${city}會再碰到的那條路`;
+    if (dir === "resist") return `不按旁人的口令假裝${year}年那些傷沒發生過`;
+    if (dir === "guard") return `把還會疼的地方護住，不讓人當眾揭開`;
+    if (dir === "help") return `用還剩的力氣幫${who}把這一週能做的做完`;
+    return `按還在身上的傷，這兩週只做${city}還能做完的事`;
+  }
+  if (focus(["wealth"], /^wealth_/)) {
+    if (dir === "seek") return `去${city}把能換成現錢或${food}的路走完`;
+    if (dir === "guard") return `先守住這一期還沒被債收走的那一點`;
+    if (dir === "resist") return `不把能當的東西一次交出去抵帳`;
+    return `按口袋和帳本，先把${year}年這兩週能付的付掉`;
+  }
+  if (focus(["kin", "parent"], /^kin_|^parent_/)) {
+    if (dir === "help") return `按${who}還在或不在的空位，把這一週的事做完`;
+    if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
+    if (dir === "guard") return `把門栓插上，先保住${who}還認的那張牀`;
+    return `看${who}的臉色，再決定${city}這兩週能走哪條巷`;
+  }
+  if (focus(["ethnicity", "lineage"], /^ethnicity_|^lineage_/)) {
+    if (dir === "endure") return `用口音和姓氏還能過關的說法，把${city}這兩週走完`;
+    if (dir === "seek") return `去${city}找還聽得懂家裏那套話的人`;
+    return `把${tagLabel || "出身"}收進回答裏，少說一句多餘的`;
+  }
+  if (focus(["school"], /^school_/)) {
+    if (dir === "resist") return `不按院子裏的人把位子和名字交出去`;
+    if (dir === "flee") return `繞開${city}會攔路的那條巷，先回${housing}`;
+    return `${age}歲在${city}仍要按點名和院子裏的規矩把這兩週過完`;
+  }
+  if (focus(["condition", "risk"], /^condition_|^risk_/)) {
+    if (dir === "guard") return `按身體已經寫進戶籍的那一行，把力氣留給必做的事`;
+    if (dir === "endure") return `帶著${tagLabel || "身上的標記"}，只做${city}這兩週還能做完的`;
+    return `不跟爆發的人比速度，先把下一頓和睡覺排好`;
+  }
+  if (focus(["mood"], /^mood_/)) {
+    if (dir === "flee") return `神智撐不住時，先離開${city}還會逼你開口的地方`;
+    if (dir === "seek") return `去找${city}能讓人坐一會兒、少被問的角落`;
+    return `按此刻的氣色，這兩週少做一件需要表演正常的事`;
+  }
+  if (focus(["household"], /^household_/)) {
+    if (dir === "guard") return `把門栓插上，聽見拍門先裝作沒人`;
+    if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
+    if (dir === "help") return `按${who}交代的把水打回來、把碗洗乾淨`;
+    return `按屋裏動手或扣飯的規矩，先把${year}年這兩週熬過`;
+  }
+  if (focus(["socio", "class"], /^socio_|^class_/)) {
+    if (dir === "seek") return `按戶籍寫的那一行，去${city}找還能換成${food}的路`;
+    if (dir === "guard") return `先守住這一戶還能公開說出口的那一點體面`;
+    if (dir === "resist") return `不按旁人對這戶的說法把名字交出去`;
+    return `按這戶在${city}被叫的那套身分，把${year}年這兩週走完`;
+  }
+  if (kind === "hunger") {
+    if (dir === "seek") return `去${city}把能換成${food}的路走完`;
+    if (dir === "guard") return `把${who}還沒扣走的那口${food}護住`;
+    if (dir === "resist") return `不把${food}讓給先伸手的人`;
+    if (dir === "flee") return `帶著空碗離開${city}還在排隊的那條巷`;
+    if (dir === "help") return `把${food}分給${kin}`;
+    return `把眼前的${food}吃掉，不留給${year}年下一頓`;
+  }
+  if (kind === "illness") {
+    if (dir === "seek") return `去${city}問還有沒有退燒藥或止瀉的粉`;
+    if (dir === "guard") return `把冷毛巾和能喝的水留給還在燒的人`;
+    if (dir === "resist") return `不讓人把你從床上拖去上工`;
+    if (dir === "flee") return `燒還沒退也先離開${housing}`;
+    if (dir === "help") return `用冷毛巾把${who}額上的熱降下來`;
+    return `躺著把力氣留給去廁所那一下`;
+  }
+  if (kind === "family") {
+    if (dir === "seek") return `去找${who}要這兩週還能走的路`;
+    if (dir === "guard") return `把門栓插上，聽見拍門先裝作沒人`;
+    if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
+    if (dir === "flee") return `趁沒人看門，從${housing}走出去`;
+    if (dir === "help") return `按${who}交代的把水打回來、把碗洗乾淨`;
+    return `把${kin}護住，不讓人先扣走`;
+  }
+  if (kind === "play") {
+    if (dir === "seek") return `帶著弟妹在${city}能去的那條巷走一圈`;
+    if (dir === "guard") return `聽見口令就把石子收進口袋散開`;
+    if (dir === "resist") return `不讓大人把能玩的空隙收去劈柴`;
+    if (dir === "flee") return `警報或口令一響，先認能躲的方向`;
+    if (dir === "help") return `把弟妹從巷口那些攔人的身邊拉開`;
+    return age <= 7
+      ? `趁${who}沒喊之前，在能去的空地停一下`
+      : `趁大人沒喊之前，在巷口踢一輪罐子`;
+  }
+  if (kind === "money") {
+    if (dir === "seek") return `向${city}熟臉求一點能換成${food}的賒`;
+    if (dir === "guard") return `先付會砸門的那一筆：房租、糧或罰`;
+    if (dir === "resist") return `不把能當的東西一次交出去`;
+    if (dir === "flee") return `帶著還能當的東西離開會砸門的那一戶`;
+    if (dir === "help") return `把能當的東西換成${kin}的那口${food}`;
+    return `把能當的東西拿去換這兩週的${food}`;
+  }
+  if (dir === "seek") return `去${city}把這兩週的${labor}先找齊`;
+  if (dir === "guard") return `手裂了仍把${labor}交上去，不讓人扣工錢`;
+  if (dir === "resist") return `不按汽笛或罰金把${labor}提前交完`;
+  if (dir === "flee") return `遲到的罰金付不起，先離開${city}的工位`;
+  if (dir === "help") return `替${who}把這兩週的${labor}做完再說話`;
+  return extra.lockedLane === "school"
+    ? `${age}歲在${city}仍要按點名和院子裏的人把這兩週過完`
+    : `把這兩週的${labor}先做完再說話`;
+}
+
+function saltChoiceTail(facts, dir, index, extra = {}) {
+  const pulse = facts.pulseTitle || facts.upheavalLabel || "";
+  const slot = Math.abs(Number(index || 0) + Number(facts.year || 0) + Number(facts.age || 0)) % 5;
+  if (slot === 1 && pulse && /封|關|戒嚴|宵禁|清人|封鎖/.test(pulse)) {
+    return `趁${pulse}還沒把門封死`;
+  }
+  if (slot === 1 && pulse) return `街上還在傳${pulse}`;
+  if (slot === 2 && facts.householdHarsh) return "屋裏有人盯著";
+  if (slot === 3 && (facts.age || 0) <= 12) return "趕在大人喊之前";
+  if (slot === 4 && facts.poor) return "口袋是空的";
+  if (dir === "flee" && extra.lockedLane === "world") return `${facts.city}的路口正在清人`;
+  return "";
+}
+
+export function composeChoiceLine(rng, ctx = {}, kind = "labor", index = 0, extra = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  let useKind = kind || "labor";
+  let dir = resolveChoiceDirection(ctx, index, extra);
+  if (extra.direction) dir = extra.direction;
+  if (extra.kind) useKind = extra.kind;
+  const health = Number(facts.health ?? 50);
+  const age = Number(facts.age || 0);
+  if ((health <= 28 || facts.fever) && (useKind === "labor" || useKind === "play") && !extra.direction) {
+    const lane = pickLiveChoiceLane(ctx, index);
+    useKind = extra.kind || lane.kind;
+    dir = extra.direction || lane.dir;
+  }
+  if (age < 7 && useKind === "labor") {
+    useKind = "family";
+    if (dir === "seek" || dir === "flee") dir = "help";
+  }
+  const avoid = extra.avoidTexts || [];
+  let line = "";
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const tryKind = attempt === 0 ? useKind : (["family", "hunger", "illness", "money", "labor"][attempt % 5]);
+    const tryDir = attempt === 0 ? dir : (["guard", "seek", "resist", "help", "flee", "endure"][(index + attempt) % 6]);
+    const core = assembleChoiceCore(rng, facts, tryKind, tryDir, extra);
+    const tail = saltChoiceTail(facts, tryDir, index + attempt * 3, extra);
+    line = scrubLocalCopy(tail ? `${core}，${tail}` : core, facts);
+    const who = ctx.character;
+    if (who && textOnCooldown(who, line)) continue;
+    if (avoid.some((row) => textsTooSimilar(row, line))) continue;
+    break;
+  }
   const who = ctx.character;
   if (who && textOnCooldown(who, line)) {
-    return `${line}（${facts.year}年第${ctx.turn || index + 1}期）`;
+    const lane = pickLiveChoiceLane(ctx, index + 11);
+    line = scrubLocalCopy(assembleChoiceCore(rng, facts, lane.kind, lane.dir, extra), facts);
   }
   return line;
+}
+
+export function composeLiveFollowUp(rng, ctx = {}, option = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  const food = foodOf(facts);
+  const labor = laborOf(facts, rng);
+  const slot = option.chaosSlot || "";
+  const bits = [
+    slot === "trap" ? `這一步做完，${facts.place}接下來可能發燒、挨打或被扣飯` : "",
+    slot === "scramble" ? "這兩週做的事和後來對不上，燒或被點名仍照樣來" : "",
+    option.style === "fog" ? "做完以後，發燒、扣飯或被人點名才從別處露出來" : "",
+    `${facts.year}年這兩週，${facts.city}的${labor}還在`,
+    facts.hungry ? `鍋裡仍是${food}` : "日子還要過",
+  ];
+  return lockChronicleToClock(joinSentences(bits), facts);
+}
+
+export function composeBreakdownBeat(rng, incident, ctx = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  return lockChronicleToClock(joinSentences([
+    `${facts.year}年，${facts.place}`,
+    `${facts.age}歲的神智撐不住：睡眠、飯量和出門的路同時裂開`,
+    bodyClause(rng, facts),
+  ]), facts);
+}
+
+export function composeNpcQuote(ctx = {}, incident = {}, meta = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  const food = foodOf(facts);
+  const labor = laborOf(facts);
+  const city = facts.city || "此地";
+  const speaker = meta.speaker || "civilian";
+  const attitude = meta.attitude || "ordinary";
+  const who = meta.who || incident.figureName || "巷口的人";
+  const pulse = facts.pulseTitle || facts.upheavalLabel || "";
+  const weekSalt = Math.abs(Number(ctx.week || ctx.turn || facts.age || 0)) % 3;
+  let quote = weekSalt === 1
+    ? `${city}這兩週先看哪條巷能走`
+    : (weekSalt === 2 ? `${city}的人這兩週話比以前少` : `${city}這兩週先看臉色再走路`);
+  let gloss = "街坊在傳這兩週能走哪條巷。";
+  if (speaker === "gangster") {
+    quote = attitude === "fear"
+      ? `${city}這條巷今天讓開。你走你的。`
+      : (attitude === "hunt" ? "站住。口袋先說話。" : `這週的數，${city}這條巷不認空口袋。`);
+    gloss = "他要過路費或封口，不是寒暄。";
+  } else if (speaker === "household") {
+    const who = meta.who || householdWho(facts);
+    const kinAtt = meta.kinAttitude || "";
+    if (kinAtt === "hostile") {
+      quote = facts.hungry
+        ? `少伸手。${food}不是為你留的。`
+        : "你這張臉這兩週別靠近灶臺。";
+      gloss = `${who}在趕人或扣飯，不是勸。`;
+    } else if (kinAtt === "cold") {
+      quote = facts.hungry ? `鍋裡的${food}見底了，別再伸手。` : "把水打回來再說話。";
+      gloss = `${who}在派活，話短。`;
+    } else if (kinAtt === "devoted" || kinAtt === "warm") {
+      quote = facts.hungry
+        ? `先把這口${food}咽下去，外頭的事等天亮。`
+        : "回來先洗手。門口那個人我替你擋過了。";
+      gloss = `${who}還肯留一口飯或擋一回。`;
+    } else {
+      quote = facts.hungry ? `鍋裡的${food}見底了，別再伸手。` : "把水打回來再說話。";
+      gloss = `${who}在派活或扣飯。`;
+    }
+  } else if (speaker === "officer") {
+    quote = pulse ? `${pulse}的時候，路條拿出來。` : "站住。路條和口音都要核。";
+    gloss = "持槍或佩章的人在查路。";
+  } else if (speaker === "foreman") {
+    quote = `汽笛響了還站著？${labor}先交上去。`;
+    gloss = "工頭要的是工時和罰金。";
+  } else if (speaker === "merchant") {
+    quote = `帳先結。${food}不賒給生面孔。`;
+    gloss = "舖子要現錢或當票。";
+  } else if (speaker === "authority" || speaker === "clerk") {
+    quote = `${facts.year}年的名冊上有你。章蓋了才能走。`;
+    gloss = "窗口要的是章和名冊，不是解釋。";
+  } else if (speaker === "orator") {
+    quote = pulse ? `${pulse}不是聽的，是要站邊的。` : `${city}這條街這兩週要人表態。`;
+    gloss = "他要你站邊或閉嘴。";
+  } else if (speaker === "bully") {
+    quote = `${city}院子這邊，你的位子不是你說了算。`;
+    gloss = "攔路的人要的是怕或東西。";
+  } else if (facts.hungry) {
+    quote = `${city}糧店又關了。${food}有人搶。`;
+  }
+  return {
+    quote: scrubLocalCopy(quote, facts),
+    gloss,
+    who,
+  };
 }
 
 export function composeOpeningBirth(rng, ctx = {}) {
@@ -391,31 +690,29 @@ export function composeOpeningWeekLead(rng, ctx = {}) {
   ]);
 }
 
-function incidentKindLine(lane, kind) {
-  const table = {
-    world: {
-      historical: "這一期街上在清點戶口、封路或傳徵召",
-      household: "這一期事出在屋裏：扣飯、鎖門或動手",
-      dark: "這一期有人收保護費、拉人下水或堵巷口",
-      survival: "這一期先來的是糧、病或天氣，不是選擇",
-      crisis: "這一期危機能死人：槍、餓、燒或抄家",
-      scene: "這一期巷口、窗口或工場出了事",
-    },
-    school: {
-      bullying: "這一期校園裡有人攔路、勒索或當眾羞辱",
-      gang: "這一期有人拉幫、收保護費或堵校門",
-      extreme: "這一期校規或處分能改寫你能不能進門",
-      exam: "這一期考試、處分或點名先於下課",
-    },
-    adult: {
-      crime: "這一期工地、碼頭或巷口有人收保護費或拉人下水",
-      politics: "這一期單位或街道在清點立場、檔案和連坐",
-      burnout: "這一期加班、罰款或夜班把睡眠收走",
-      labor: "這一期廠門、工分或罰金先於工錢",
-      commerce: "這一期舖面、票證或欠帳先到期",
-    },
-  };
-  return (table[lane] || table.world)[kind] || "這一期街上出了事";
+function incidentKindLine(lane, kind, facts = {}) {
+  const city = facts.city || "此地";
+  const age = facts.age || 0;
+  const food = foodOf(facts);
+  if (lane === "school") {
+    if (kind === "bullying") return `${age}歲在${city}的院子裏碰到攔路、勒索或當眾羞辱`;
+    if (kind === "gang") return `${city}有人拉幫、收保護費或堵校門`;
+    if (kind === "extreme") return `校規或處分正在改寫${age}歲的人能不能進門`;
+    return `${city}的考試、處分或點名先於下課`;
+  }
+  if (lane === "adult") {
+    if (kind === "crime") return `${city}的工地、碼頭或巷口有人收保護費或拉人下水`;
+    if (kind === "politics") return `${city}的單位或街道在清點立場、檔案和連坐`;
+    if (kind === "burnout") return "加班、罰款或夜班把睡眠收走";
+    if (kind === "commerce") return `${city}的舖面、票證或欠帳先到期`;
+    return `${city}的廠門、工分或罰金先於工錢`;
+  }
+  if (kind === "historical") return `${city}街上在清點戶口、封路或傳徵召`;
+  if (kind === "household") return `屋裏在扣${food}、鎖門或動手`;
+  if (kind === "dark") return `${city}有人收保護費、拉人下水或堵巷口`;
+  if (kind === "survival") return `先來的是${food}、病或天氣，不是選擇`;
+  if (kind === "crisis") return `${city}這一期能死人：槍、餓、燒或抄家`;
+  return `${city}的巷口、窗口或工場出了事`;
 }
 
 export function composeWorldBeat(rng, incident, ctx = {}) {
@@ -427,7 +724,7 @@ export function composeWorldBeat(rng, incident, ctx = {}) {
     .slice(0, 2);
   return lockChronicleToClock(joinSentences([
     `${facts.year}年，${facts.place}`,
-    incidentKindLine("world", incident?.kind || "scene"),
+    incidentKindLine("world", incident?.kind || "scene", facts),
     threads.length ? `能看見的是${threads.join("、")}` : "",
   ]), facts);
 }
@@ -436,7 +733,7 @@ export function composeSchoolBeat(rng, incident, ctx = {}) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   return lockChronicleToClock(joinSentences([
     `${facts.year}年，${facts.place}`,
-    incidentKindLine("school", incident?.kind || "exam"),
+    incidentKindLine("school", incident?.kind || "exam", facts),
     facts.age ? `${facts.age}歲仍要按校規、點名和院子裏的人過日子` : "",
   ]), facts);
 }
@@ -445,7 +742,7 @@ export function composeAdultBeat(rng, incident, ctx = {}) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   return lockChronicleToClock(joinSentences([
     `${facts.year}年，${facts.place}`,
-    incidentKindLine("adult", incident?.kind || incident?.sector || "labor"),
+    incidentKindLine("adult", incident?.kind || incident?.sector || "labor", facts),
   ]), facts);
 }
 
@@ -462,7 +759,7 @@ export function composeHistoryPulse(rng, pulse, ctx = {}) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   if (!pulse?.title) return lockChronicleToClock(historyClause(rng, facts), facts);
   return lockChronicleToClock(joinSentences([
-    `${facts.year}年，${facts.place}能核對的時局是${pulse.title}`,
+    `${facts.year}年，${facts.place}街上聽得到的是${pulse.title}`,
   ]), facts);
 }
 

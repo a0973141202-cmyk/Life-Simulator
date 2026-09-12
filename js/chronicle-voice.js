@@ -14,6 +14,8 @@ import { scanNarrativeFacts } from "./narrative-facts.js";
 import { rememberTriggeredEvent } from "./event-memory.js";
 import { getSettlementCountry, getSettlementDisplayName } from "./settlements.js";
 import { publicTagLabel } from "./data/ui-zh.js";
+import { isDossierLeakSentence, scrubPublicText } from "./data/public-text.js";
+import { sanitizeChronicleText } from "./chronicle-sanitize.js";
 
 export { chronicleLineKey };
 
@@ -93,8 +95,8 @@ function currentYearOf(ctx = {}) {
 }
 
 function isCurrentFortnightText(text, year) {
-  const raw = String(text || "").trim();
-  if (!raw || PRIOR_LIFE_RE.test(raw)) return false;
+  const raw = scrubPublicText(String(text || "").trim());
+  if (!raw || PRIOR_LIFE_RE.test(raw) || isDossierLeakSentence(raw)) return false;
   const years = [...raw.matchAll(/((?:1[89]|20)\d{2})\s*年/g)].map((row) => Number(row[1]));
   if (year && years.some((stamp) => stamp !== year)) return false;
   return true;
@@ -108,17 +110,25 @@ export function assembleWeeklyChronicle(rng, parts, ctx) {
   const lines = [];
   const push = (part) => {
     for (const chunk of String(part || "").split("\n")) {
-      const locked = lockChronicleToClock(chunk.trim(), facts);
+      const locked = scrubPublicText(lockChronicleToClock(chunk.trim(), facts));
       if (!isCurrentFortnightText(locked, year)) continue;
       const key = chronicleLineKey(locked);
       if (!key || seen.has(key)) continue;
+      // Drop near-duplicates that only differ by a trailing clause.
+      if ([...seen].some((row) => {
+        if (row === key) return true;
+        if (row === "pulse:street" && key === "pulse:street") return true;
+        return false;
+      })) continue;
       seen.add(key);
       lines.push(locked);
     }
   };
-  push(composeFortnightRecord(rng, ctx));
+  // Encounter intro is the lead; never push a second fortnight echo.
+  if (ctx.weekEncounter?.intro) push(ctx.weekEncounter.intro);
+  else push(composeFortnightRecord(rng, ctx));
   for (const part of parts || []) push(part);
-  const joined = lines.join("\n");
+  const joined = sanitizeChronicleText(lines.join("\n"), ctx, { maxUnits: 7 });
   if (ctx.character && joined) {
     rememberTriggeredEvent(ctx.character, { stem: joined.slice(0, 40) }, ctx);
   }

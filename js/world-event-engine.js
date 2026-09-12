@@ -23,6 +23,7 @@ import { incidentAllowed } from "./age-gate.js";
 import { attachUpheaval } from "./upheaval-engine.js";
 import { socialStanding } from "./social-feedback.js";
 import { eventOutline, filterCooledPool } from "./event-memory.js";
+import { eraPlaceAllows } from "./event-engine.js";
 
 const SEASONAL_ENV_NEEDLES = [
   "extreme_cold",
@@ -181,6 +182,7 @@ export function eventMatches(incident, ctx) {
   }
   if (when.tagsAll && !when.tagsAll.every((tag) => hasTag(ctx, tag))) return false;
   if (when.tagsNone && when.tagsNone.some((tag) => hasTag(ctx, tag))) return false;
+  if (!eraPlaceAllows(incident, ctx)) return false;
   return incidentAllowed(incident, ctx);
 }
 
@@ -200,6 +202,9 @@ export function worldCrisisChance(ctx) {
     p += 0.07;
   }
   if ((ctx.character?.worldEventState?.pressure || 0) >= 18) p += 0.06;
+  const era = Number(ctx.eraCrisis?.score || 0);
+  if (era >= 22) p += 0.08;
+  if (era >= 36) p += 0.1;
   const tier = ctx.upheaval?.tier || 0;
   if (tier) p += 0.04 * tier;
   const cap = tier >= 2 ? 0.52 : 0.42;

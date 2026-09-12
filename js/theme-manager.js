@@ -1,6 +1,6 @@
 /**
  * ThemeManager — adaptive archive chrome.
- * Reads life stage, vocation, era, and live history. Does not mutate game logic.
+ * Applies semantic CSS classes on #app / body. Never mutates layout geometry.
  */
 import { CLASS_SKINS, ERA_SKINS, STAGE_SKINS, VOCATION_SKINS } from "./data/ui-themes.js";
 
@@ -11,7 +11,62 @@ const DEFAULT_THEME = Object.freeze({
   eraSkin: "archive",
   crisisSkin: "none",
   ornament: "archive",
+  stageClass: "stage-archive",
+  vocationClass: "vocation-archive",
+  eraClass: "era-archive",
+  crisisClass: "crisis-none",
+  ornamentClass: "ornament-archive",
 });
+
+const STAGE_CLASS = Object.freeze({
+  childhood: "stage-childhood",
+  academic: "stage-student",
+  urban: "stage-worker",
+  faded: "stage-elder",
+  archive: "stage-archive",
+});
+
+const VOCATION_CLASS = Object.freeze({
+  labor: "vocation-worker",
+  rural: "vocation-worker",
+  academic: "vocation-student",
+  military: "vocation-military",
+  commerce: "vocation-commerce",
+  urban: "vocation-worker",
+  underworld: "vocation-underworld",
+  faded: "vocation-elder",
+  archive: "vocation-archive",
+});
+
+const ERA_CLASS = Object.freeze({
+  depression: "era-depression",
+  wartime: "era-wartime",
+  coldwar: "era-coldwar",
+  contemporary: "era-contemporary",
+  archive: "era-archive",
+});
+
+const CRISIS_CLASS = Object.freeze({
+  none: "crisis-none",
+  watch: "crisis-watch",
+  crisis: "stage-crisis",
+  war: "stage-crisis",
+});
+
+const ORNAMENT_CLASS = Object.freeze({
+  childhood: "ornament-childhood",
+  academic: "ornament-student",
+  military: "ornament-military",
+  wartime: "ornament-military",
+  depression: "ornament-depression",
+  labor: "ornament-worker",
+  rural: "ornament-worker",
+  coldwar: "ornament-coldwar",
+  contemporary: "ornament-contemporary",
+  archive: "ornament-archive",
+});
+
+const THEME_CLASS_RE = /^(stage-|vocation-|era-|crisis-|ornament-|theme-ready|theme-crisis)/;
 
 function threadsOf(state) {
   return state?.upheaval?.threads || state?.character?.upheavalState?.threads || [];
@@ -59,29 +114,61 @@ function crisisSkinOf(state) {
   return "none";
 }
 
+function ornamentOf(stageSkin, vocationSkin, eraSkin, crisisSkin) {
+  if (vocationSkin === "military" || crisisSkin === "war") return "military";
+  if (eraSkin === "wartime") return "wartime";
+  if (eraSkin === "depression") return "depression";
+  if (vocationSkin === "labor" || vocationSkin === "rural") return vocationSkin;
+  if (vocationSkin === "academic" || stageSkin === "academic") return "academic";
+  if (eraSkin === "coldwar") return "coldwar";
+  if (eraSkin === "contemporary") return "contemporary";
+  if (stageSkin === "childhood") return "childhood";
+  return "archive";
+}
+
 export function resolveTheme(state) {
   if (!state?.ready) return { ...DEFAULT_THEME };
   const stageSkin = stageSkinOf(state);
   const vocationSkin = vocationSkinOf(state);
   const eraSkin = eraSkinOf(state);
   const crisisSkin = crisisSkinOf(state);
-  let ornament = stageSkin;
-  if (vocationSkin === "military" || crisisSkin === "war") ornament = "military";
-  else if (eraSkin === "wartime") ornament = "wartime";
-  else if (eraSkin === "depression") ornament = "depression";
-  else if (vocationSkin === "labor" || vocationSkin === "rural") ornament = vocationSkin;
-  else if (vocationSkin === "academic" || stageSkin === "academic") ornament = "academic";
-  else if (eraSkin === "coldwar") ornament = "coldwar";
-  else if (eraSkin === "contemporary") ornament = "contemporary";
-  const id = [stageSkin, vocationSkin, eraSkin, crisisSkin].join("-");
+  const ornament = ornamentOf(stageSkin, vocationSkin, eraSkin, crisisSkin);
   return {
-    id,
+    id: [stageSkin, vocationSkin, eraSkin, crisisSkin].join("-"),
     stageSkin,
     vocationSkin,
     eraSkin,
     crisisSkin,
     ornament,
+    stageClass: STAGE_CLASS[stageSkin] || STAGE_CLASS.archive,
+    vocationClass: VOCATION_CLASS[vocationSkin] || VOCATION_CLASS.archive,
+    eraClass: ERA_CLASS[eraSkin] || ERA_CLASS.archive,
+    crisisClass: CRISIS_CLASS[crisisSkin] || CRISIS_CLASS.none,
+    ornamentClass: ORNAMENT_CLASS[ornament] || ORNAMENT_CLASS.archive,
   };
+}
+
+function clearThemeClasses(node) {
+  if (!node?.classList) return;
+  for (const name of [...node.classList]) {
+    if (THEME_CLASS_RE.test(name)) node.classList.remove(name);
+  }
+}
+
+function writeThemeClasses(node, theme, ready) {
+  if (!node?.classList) return;
+  clearThemeClasses(node);
+  node.classList.add(
+    theme.stageClass,
+    theme.vocationClass,
+    theme.eraClass,
+    theme.crisisClass,
+    theme.ornamentClass,
+  );
+  if (ready) node.classList.add("theme-ready");
+  if (theme.crisisSkin === "crisis" || theme.crisisSkin === "war") {
+    node.classList.add("theme-crisis");
+  }
 }
 
 function writeDataset(node, theme) {
@@ -96,12 +183,13 @@ function writeDataset(node, theme) {
 
 export function applyTheme(state) {
   const theme = resolveTheme(state);
+  const ready = Boolean(state?.ready);
   const body = typeof document !== "undefined" ? document.body : null;
   const app = typeof document !== "undefined" ? document.getElementById("app") : null;
-  const desk = typeof document !== "undefined" ? document.querySelector(".desk") : null;
-  if (body) writeDataset(body, theme);
-  if (app) writeDataset(app, theme);
-  if (desk) writeDataset(desk, theme);
+  writeThemeClasses(body, theme, ready);
+  writeThemeClasses(app, theme, ready);
+  writeDataset(body, theme);
+  writeDataset(app, theme);
   return theme;
 }
 
@@ -109,4 +197,4 @@ export function clearTheme() {
   return applyTheme({ ready: false });
 }
 
-export { DEFAULT_THEME };
+export { DEFAULT_THEME, STAGE_CLASS, VOCATION_CLASS, ERA_CLASS, CRISIS_CLASS };

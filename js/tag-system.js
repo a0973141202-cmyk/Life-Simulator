@@ -124,6 +124,21 @@ export function removeCharacterTag(character, tagId) {
   return removed;
 }
 
+export function patchCharacterTag(character, tagId, patch = {}) {
+  if (!character || !tagId) return false;
+  if (!character.tagStore) character.tagStore = new TagStore(character.tagRecords || character.tags || []);
+  const record = character.tagStore.get(tagId);
+  if (!record) return false;
+  if (patch.hidden != null) record.hidden = Boolean(patch.hidden);
+  if (patch.temporary != null) record.temporary = Boolean(patch.temporary);
+  if (patch.label) record.label = patch.label;
+  if (patch.reason != null) record.reason = patch.reason;
+  if (patch.data !== undefined) record.data = patch.data;
+  character.tagRecords = character.tagStore.toJSON();
+  character.tags = uniqueTags(character.tagRecords.flatMap((item) => [item.id, item.label]));
+  return true;
+}
+
 export function uniqueTags(list) {
   return [...new Set((list || []).filter(Boolean))];
 }

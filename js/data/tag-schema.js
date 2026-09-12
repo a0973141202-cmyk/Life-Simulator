@@ -45,6 +45,8 @@ export const TAG_PREFIX = Object.freeze({
   world: "world_",
   figure: "figure_",
   social: "social_",
+  wealth: "wealth_",
+  kin: "kin_",
 });
 
 export function ethnicityTag(id) {

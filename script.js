@@ -5,21 +5,62 @@
 export { GameEngine } from "./js/GameEngine.js";
 export { GenesisEngine, createCharacter, describeGenesis } from "./js/genesis.js";
 export { generateTurn } from "./js/eventGenerator.js";
+export {
+  compileLiveSheet,
+  eventWeight,
+  meetsPrerequisites,
+  sampleWeightedEvents,
+  sieveWeeklyEvents,
+} from "./js/event-engine.js";
+export { WEEKLY_EVENT_POOL } from "./js/data/events-pool.js";
 export { ensureEventMemory, filterCooledPool, rememberTriggeredEvent, seedSessionCooldown, EVENT_COOLDOWN_CAP } from "./js/event-memory.js";
 export { ensureTextHistory, beginTextTurn, rememberTextSnippet, TEXT_HISTORY_TURNS } from "./js/text-history.js";
 export { attachLifeContext, contextAllowsOption, scanWeekContext, fitsWeekContext } from "./js/life-context.js";
-export { beginExclusionTurn, optionExcluded, rememberExcluded, EXCLUSION_TURNS } from "./js/exclusion-buffer.js";
+export { beginExclusionTurn, optionExcluded, rememberExcluded, rememberUnpicked, EXCLUSION_TURNS } from "./js/exclusion-buffer.js";
 export { composeExclusiveFill } from "./js/exclusive-fill.js";
-export { varyGenericNarrative, inferVariatorKind, maybeVaryChoice } from "./js/narrative-variator.js";
+export { mintTagDrivenTriad, remintLockedTriadText, collectTagLanes } from "./js/tag-choice-mint.js";
+export { varyGenericNarrative, inferVariatorKind, maybeVaryChoice, weaveVariatorLine } from "./js/narrative-variator.js";
 export { VARIATOR_KINDS } from "./js/data/variator-lexicon.js";
 export { assembleWeeklyChronicle, chronicleOpener, chronicleLineKey, pickFreshLine } from "./js/chronicle-voice.js";
-export { composePeriodChronicle, composeFortnightRecord, composeOpeningBirth, composeWorldBeat } from "./js/dynamic-prose.js";
+export { tagGloss, composeTagGloss } from "./js/data/tag-gloss.js";
+export { bindTagTooltips, decorateTagChip } from "./js/tag-tooltip.js";
+export { composePeriodChronicle, composeFortnightRecord, composeOpeningBirth, composeWorldBeat, composeChoiceLine, composeLiveFollowUp } from "./js/dynamic-prose.js";
+export { composeWeekEncounter, composeEncounterChoice } from "./js/week-encounter.js";
 export { scanNarrativeFacts } from "./js/narrative-facts.js";
 export { attachLifeProgress, resolveLifeStage, progressAllowsAction } from "./js/life-stage-manager.js";
 export { LIFE_ARCS, TURNING_POINTS } from "./js/data/life-stage-catalog.js";
 export { applyTheme, resolveTheme } from "./js/theme-manager.js";
 export { composeLifeResolution } from "./js/life-resolution.js";
-export { scrubPublicText, scrubRiddleText } from "./js/data/public-text.js";
+export { composeMementoCard, collectMemorialTags } from "./js/memento.js";
+export { scrubPublicText, scrubRiddleText, isDossierLeakSentence } from "./js/data/public-text.js";
+export { inspectPublicLine, monitorPublicText, gateWeeklyOutput, gateDeathCopy } from "./js/text-monitor.js";
+export {
+  sanitizeChronicleText,
+  composeAlignedChronicle,
+  splitChronicleUnits,
+  dedupeChronicleUnits,
+} from "./js/chronicle-sanitize.js";
+export { ensureDistinctChoiceTriad, pickDistinctLanes, mintUniqueChoiceLine } from "./js/choice-dedupe.js";
+export { textsTooSimilar, normalizeChoiceText, clashesAny } from "./js/choice-similarity.js";
+export { filterPublicLine, scanLogicFaults, pickLiveChoiceLane, sentenceShape } from "./js/text-logic-filter.js";
+export {
+  ensureWealth,
+  seedWealth,
+  applyWealthDelta,
+  weeklyEconomicTick,
+  evaluateBankruptcy,
+  pickWealthCrisis,
+  publicWealthView,
+} from "./js/wealth-engine.js";
+export {
+  ensureNpcNetwork,
+  seedNpcNetwork,
+  weeklyNpcTick,
+  pickKinCrisis,
+  publicKinView,
+  livingParentRoles,
+  kinPressureScore,
+} from "./js/npc-social-engine.js";
 export { composeOpeningDossier, consumeOpeningWeekLead } from "./js/opening-chronicle.js";
 export { OPENING_REPEAT_CAP, rememberSessionOpening, recentOpeningRecords } from "./js/session-repeat.js";
 export { ACTION_POOL } from "./js/actions.js";
@@ -96,7 +137,13 @@ export { PARENT_APTITUDE_DATABASE } from "./js/data/parent-aptitudes-database.js
 export { CONDITION_DATABASE } from "./js/data/conditions-database.js";
 export { SOCIO_TAG_DATABASE } from "./js/data/socio-tags-database.js";
 export { MOOD_TAG_RULES } from "./js/data/mood-tags-database.js";
-export { TagStore } from "./js/tag-system.js";
+export { TagStore, patchCharacterTag } from "./js/tag-system.js";
+export {
+  weeklyTagLifecycle,
+  seedTagLifecycle,
+  ensureTagLifecycle,
+} from "./js/tag-lifecycle-engine.js";
+export { DECAY_RULES, EVOLUTION_RULES } from "./js/data/tag-lifecycle-rules.js";
 export { FORBIDDEN_ETHNICITY_IDS } from "./js/data/forbidden-groups.js";
 export { YEAR_MIN, YEAR_MAX, STAT_KEYS, STAT_LABELS, getLifeStage, PLAY_AGE_MIN, PLAY_AGE_MAX, PLAY_PHASE, SOCIETY_ENTRY_AGE, TURNS_PER_YEAR, DAYS_PER_TURN, TURNS_TO_AGE_18 } from "./js/constants.js";
 export { BETA_CONFIG, isBetaEnabled } from "./js/data/beta-config.js";
@@ -107,7 +154,17 @@ export {
   shouldClosePlayWindow,
 } from "./js/life-bounds.js";
 export { canBeginNewLife, lifeIsActive, refuseNewLife } from "./js/life-session.js";
-export { SAVE_KEY, readLifeSave, writeLifeSave, clearLifeSave, hasLifeSave } from "./js/life-persist.js";
+export {
+  SAVE_KEY,
+  HALL_KEY,
+  readLifeSave,
+  writeLifeSave,
+  clearLifeSave,
+  hasLifeSave,
+  readHallOfFame,
+  writeHallCard,
+  hasHallOfFame,
+} from "./js/life-persist.js";
 export { makeDate, isLeapYear, formatDate, randomDateInYear, isValidGregorianDate } from "./js/data/calendar.js";
 export { natalEnvironmentTags, currentEnvironmentTags } from "./js/data/seasons.js";
 export { SETTLEMENT_COORDS, SETTLEMENT_FOUNDING } from "./js/data/settlement-geo.js";
@@ -120,9 +177,21 @@ export { NAME_PACKS, nameKeyForCountry, namesFromKey } from "./js/data/name-pack
 export { formatCulturalName, composeCulturalName, resolveNamingEthnicity } from "./js/naming-engine.js";
 export { AWAKENING_ACTION_POOL } from "./js/data/awakening-actions.js";
 export { createClockAtAge, isPastPlayAge, advanceClock, dateAtAgeTurn, formatTime, turnsToAge } from "./js/time.js";
-export { resolveDailyState, pickDailyTexture, DAILY_STATES } from "./js/daily-engine.js";
+export { resolveDailyState, pickDailyTexture, renderDailyNarrative, DAILY_STATES } from "./js/daily-engine.js";
 export { DAILY_SLICES } from "./js/data/daily/catalog.js";
 export { applyTrauma, weeklyTraumaPressure, ensureTraumaState } from "./js/trauma-engine.js";
+export {
+  applyBreakdownChoice,
+  armBreakdownIfNeeded,
+  ensureBreakdownState,
+  pickBreakdownIncident,
+  shouldForceBreakdown,
+  weeklySanityCrisis,
+  SANITY_DANGER,
+  BREAKDOWN_TAG_IDS,
+} from "./js/mental-breakdown-engine.js";
+export { BREAKDOWN_INCIDENTS } from "./js/data/breakdown-incidents.js";
+export { attachEraCrisis, evaluateEraCrisis, eraCrisisScore } from "./js/history-crisis-engine.js";
 export { TRAUMA_TAG_DATABASE } from "./js/data/trauma-tags-database.js";
 export { HOUSEHOLD_CLIMATE_TAGS } from "./js/data/household-climate.js";
 export { TRAUMA_COST_NOTE } from "./js/data/trauma-writing-rules.js";
@@ -166,7 +235,7 @@ export { BUTTERFLY_CASCADES } from "./js/data/butterfly-cascades.js";
 
 import { GameEngine } from "./js/GameEngine.js";
 import { GenesisEngine } from "./js/genesis.js";
-import { renderLifeSim, showBootError } from "./js/ui.js";
+import { closeHallOfFame, openHallOfFame, renderLifeSim, showBootError } from "./js/ui.js";
 import { SHOW_REPUTATION_UI } from "./js/data/ui-config.js";
 import { canBeginNewLife } from "./js/life-session.js";
 import { SAVE_KEY, clearLifeSave, readLifeSave } from "./js/life-persist.js";
@@ -228,7 +297,14 @@ export class CenturyLifeLoop {
   }
 
   paint() {
-    renderLifeSim(this.state, { onChoose: (index) => this.choose(index) });
+    renderLifeSim(this.state, {
+      onChoose: (index) => this.choose(index),
+      onHallSelect: () => this.paint(),
+      onHallClose: () => {
+        closeHallOfFame();
+        this.paint();
+      },
+    });
     return this;
   }
 
@@ -256,6 +332,7 @@ export class CenturyLifeLoop {
       clearLifeSave();
       this.engine = new GameEngine();
       const state = this.engine.initNewGame();
+      closeHallOfFame();
       this.sync(state).paint();
       return state;
     } catch (error) {
@@ -304,6 +381,30 @@ export class CenturyLifeLoop {
     };
     const rebirth = document.getElementById("btn-rebirth");
     if (rebirth) rebirth.addEventListener("click", startNextLife);
+    const hall = document.getElementById("btn-hall");
+    if (hall) {
+      hall.addEventListener("click", () => {
+        if (this.engine?.gameOver) {
+          closeHallOfFame();
+        } else {
+          openHallOfFame();
+        }
+        this.paint();
+      });
+    }
+    const hallClose = document.getElementById("btn-hall-close");
+    if (hallClose) {
+      hallClose.addEventListener("click", () => {
+        closeHallOfFame();
+        this.paint();
+      });
+    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (this.engine?.gameOver) return;
+      closeHallOfFame();
+      this.paint();
+    });
     document.addEventListener("keydown", (event) => {
       if (event.target && ["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
@@ -342,6 +443,8 @@ const REQUIRED_DOM_IDS = [
   "choices-container",
   "death-resolution",
   "btn-rebirth",
+  "btn-hall",
+  "death-weeks",
 ];
 
 let app = null;

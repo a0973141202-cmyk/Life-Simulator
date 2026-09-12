@@ -5,6 +5,9 @@
  */
 export const SAVE_KEY = "century_life_save";
 export const SAVE_VERSION = 1;
+export const HALL_KEY = "century_hall_of_fame";
+export const HALL_VERSION = 1;
+const HALL_CAP = 48;
 
 function storage() {
   try {
@@ -81,4 +84,46 @@ export function clearLifeSave() {
 
 export function hasLifeSave() {
   return Boolean(readLifeSave());
+}
+
+export function readHallOfFame() {
+  const store = storage();
+  if (!store) return [];
+  const raw = store.getItem(HALL_KEY);
+  if (!raw) return [];
+  try {
+    const data = JSON.parse(raw);
+    const cards = Array.isArray(data?.cards) ? data.cards : (Array.isArray(data) ? data : []);
+    return cards.filter((row) => row && row.name);
+  } catch {
+    return [];
+  }
+}
+
+function persistHall(cards) {
+  const store = storage();
+  if (!store) return false;
+  try {
+    store.setItem(HALL_KEY, JSON.stringify({
+      version: HALL_VERSION,
+      savedAt: Date.now(),
+      cards: cards.slice(0, HALL_CAP),
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function writeHallCard(card) {
+  if (!card?.name) return false;
+  const id = card.id || [card.seed, card.birthYear, card.endYear, card.name, card.weeksLived ?? 0].join("·");
+  const next = { ...card, id, savedAt: card.savedAt || Date.now() };
+  const cards = readHallOfFame().filter((row) => row.id !== id);
+  cards.unshift(next);
+  return persistHall(cards);
+}
+
+export function hasHallOfFame() {
+  return readHallOfFame().length > 0;
 }

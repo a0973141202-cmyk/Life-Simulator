@@ -290,6 +290,45 @@ def main() -> None:
         errors.append("genesis missing autoLocalPersist flag")
     if "noManualReset: true" not in genesis:
         errors.append("genesis missing noManualReset flag")
+    persist = read(ROOT / "life-persist.js")
+    if "century_hall_of_fame" not in persist:
+        errors.append("life-persist missing century_hall_of_fame key")
+    if "writeHallCard" not in persist or "readHallOfFame" not in persist:
+        errors.append("life-persist missing Hall of Fame read/write")
+    if "writeHallCard" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must write a Hall of Fame card on death")
+    if "composeMementoCard" not in read(ROOT / "memento.js"):
+        errors.append("memento missing composeMementoCard")
+    if "weeksLived" not in read(ROOT / "memento.js"):
+        errors.append("memento card must record weeksLived")
+    if "hallOfFame: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing hallOfFame")
+    if "mementoModal: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing mementoModal")
+    if "hallOfFame: true" not in genesis:
+        errors.append("genesis missing hallOfFame flag")
+    if "mementoModal: true" not in genesis:
+        errors.append("genesis missing mementoModal flag")
+    if 'id="btn-hall"' not in html or 'id="death-weeks"' not in html:
+        errors.append("index.html missing memorial hall or weeks-lived fields")
+    if "接受命運，開啟新的一生" not in html:
+        errors.append("death panel must only offer 接受命運，開啟新的一生")
+    if "hall-of-fame" not in html or "memento-card" not in html:
+        errors.append("index.html missing memento card or hall-of-fame list")
+    if "rebuildClock" not in read(ROOT / "time.js"):
+        errors.append("time.js missing rebuildClock save reconciliation")
+    if "rebuildClock" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine.fromJSON must rebuild the clock from birth + turns")
+    if "requestedDate.year < YEAR_MIN" not in genesis:
+        errors.append("genesis must reject birthDate years outside 1920–2025")
+    if "max-height: min(46vh" not in read(ROOT.parent / "style.css"):
+        errors.append("event-history must have a fixed independent scroll pane")
+    if "標籤卷宗" in html:
+        errors.append("index.html must not print designer 標籤卷宗 chrome")
+    if "發跡窗口" in html or "發跡窗口" in read(ROOT / "ui.js"):
+        errors.append("player UI must not explain figure spawn windows")
+    if 'replace(/Sentinelese/g, "北哨兵' in read(DATA / "ui-zh.js"):
+        errors.append("ui-zh must not inject 北哨兵 into player text")
     if "EVENT_COOLDOWN_CAP" not in read(ROOT / "event-memory.js"):
         errors.append("event-memory missing EVENT_COOLDOWN_CAP")
     if "filterCooledPool" not in read(ROOT / "world-event-engine.js"):
@@ -322,6 +361,19 @@ def main() -> None:
         errors.append("ui.js must de-dupe chronicle lines with chronicleLineKey")
     if "scrollEventHistoryToLatest" not in read(ROOT / "ui.js") or "scrollTop = 0" in read(ROOT / "ui.js"):
         errors.append("ui.js must pin event history to the latest entry")
+    if 'kicker.textContent = ' in read(ROOT / "ui.js") and "本期紀事" in read(ROOT / "ui.js"):
+        errors.append("ui.js must not reprint 本期紀事 inside the gazette body")
+    if "isDossierLeakSentence" not in read(DATA / "public-text.js"):
+        errors.append("public-text missing isDossierLeakSentence dossier scrub")
+    daily_engine = read(ROOT / "daily-engine.js")
+    if "renderSliceLead(lead)" not in daily_engine or "texture.state?.label ?" in daily_engine:
+        errors.append("daily-engine must not print designer daily-state labels")
+    if "學齡前／課後" in daily_engine:
+        errors.append("daily-engine must not print designer daily-state labels")
+    if "學齡前／課後" in read(ROOT / "ui.js") or "工業聚落" in read(ROOT / "ui.js"):
+        errors.append("ui.js must not render designer taxonomy in the gazette")
+    if "isDossierLeakSentence" not in read(ROOT.parent / "script.js"):
+        errors.append("script.js must export dossier leak scrubber")
     if "fourPillarProse" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing fourPillarProse")
     if "dynamicComputationEngine" not in read(ROOT / "genesis.js"):
@@ -340,8 +392,8 @@ def main() -> None:
         errors.append("GameEngine sandbox missing themeManager")
     if "applyTheme" not in read(ROOT / "ui.js"):
         errors.append("ui.js must apply ThemeManager skins")
-    if "progressAllowsAction" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must gate options through LifeStageManager")
+    if "progressAllowsAction" not in read(ROOT / "eventGenerator.js") and "progressAllowsAction" not in read(ROOT / "event-engine.js"):
+        errors.append("eventEngine must gate options through LifeStageManager")
     if "eventCooldown" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing eventCooldown")
     if "composeOpeningDossier" not in read(ROOT / "opening-chronicle.js"):
@@ -364,11 +416,21 @@ def main() -> None:
         errors.append("variator-lexicon missing VARIATOR_KINDS")
     if "beginTextTurn" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must start a text-history turn each week")
-    if "weaveVariatorLine" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must weave year/place/class matrix lines")
+    if "weaveVariatorLine" not in read(ROOT / "narrative-variator.js"):
+        errors.append("narrative-variator must export weaveVariatorLine")
     chronicle_voice = read(ROOT / "chronicle-voice.js")
     if 'from "./dynamic-prose.js"' not in chronicle_voice or "composeFortnightRecord" not in chronicle_voice:
         errors.append("chronicle-voice must import composeFortnightRecord from dynamic-prose")
+    if "sanitizeChronicleText" not in chronicle_voice:
+        errors.append("chronicle-voice must sanitize assembled fortnight copy")
+    if "sanitizeChronicleText" not in read(ROOT / "chronicle-sanitize.js"):
+        errors.append("chronicle-sanitize missing sanitizeChronicleText")
+    if "composeAlignedChronicle" not in read(ROOT / "chronicle-sanitize.js"):
+        errors.append("chronicle-sanitize missing composeAlignedChronicle")
+    if "composeAlignedChronicle" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor must rebuild option-aligned chronicle")
+    if "chronicleSanitized" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor must stamp chronicleSanitized")
     if "globalTextDedup" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing globalTextDedup")
     if "attachLifeContext" not in read(ROOT / "eventGenerator.js"):
@@ -379,6 +441,104 @@ def main() -> None:
         errors.append("eventGenerator must mint exclusive fills instead of recycling options")
     if "noOptionRecycling" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator missing noOptionRecycling gate")
+    if "useLock ? option : maybeVaryChoice" in read(ROOT / "eventGenerator.js"):
+        errors.append("locked incidents must still mint live choice copy")
+    if "pick(rng, option.followUps)" in read(ROOT / "eventGenerator.js"):
+        errors.append("resolveOption must not draw canned followUps")
+    if "turningPoint.journal" in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must not dump turning-point journal into 本期紀事")
+    if "composeLiveFollowUp" not in read(ROOT / "dynamic-prose.js"):
+        errors.append("dynamic-prose missing composeLiveFollowUp")
+    if "pool[index % pool.length]" in read(ROOT / "dynamic-prose.js"):
+        errors.append("composeChoiceLine must not index a 3-line table")
+    if "rememberUnpicked" not in read(ROOT / "exclusion-buffer.js"):
+        errors.append("exclusion-buffer missing rememberUnpicked")
+    if "rememberUnpicked" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must permanently exclude unused triad options")
+    if "dynamicOnTheFly: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing dynamicOnTheFly")
+    if "zeroHardcodedTemplates: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing zeroHardcodedTemplates")
+    if "liveChoiceMint: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing liveChoiceMint")
+    if "contextualIntro: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing contextualIntro")
+    if "figureWeave: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing figureWeave")
+    if "encounterDrivenChoices: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing encounterDrivenChoices")
+    if "staticWorldDatabase: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing staticWorldDatabase")
+    if "predefinedDemographics: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing predefinedDemographics")
+    if "liveWeeklyNarrative: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing liveWeeklyNarrative")
+    if "textLogicMonitor: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing textLogicMonitor")
+    if "semanticGate: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing semanticGate")
+    if "logicFilter: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing logicFilter")
+    if "causalityGate: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing causalityGate")
+    if "varietyGuard: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing varietyGuard")
+    if "wealthEngine: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing wealthEngine")
+    if "bankruptcyCrisis: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing bankruptcyCrisis")
+    if "npcSocialNetwork: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing npcSocialNetwork")
+    if "kinDeathCrisis: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing kinDeathCrisis")
+    if not (ROOT / "npc-social-engine.js").exists():
+        errors.append("missing npc-social-engine.js")
+    if not (ROOT / "data" / "npc-schema.js").exists():
+        errors.append("missing data/npc-schema.js")
+    if not (ROOT / "choice-dedupe.js").exists():
+        errors.append("missing choice-dedupe.js")
+    if not (ROOT / "choice-similarity.js").exists():
+        errors.append("missing choice-similarity.js")
+    if "ensureDistinctChoiceTriad" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator missing ensureDistinctChoiceTriad")
+    if "noDuplicateChoices: true" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor missing noDuplicateChoices flag")
+    if "pickKinCrisis" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator missing pickKinCrisis")
+    if "seedNpcNetwork" not in read(ROOT / "genesis.js"):
+        errors.append("genesis missing seedNpcNetwork")
+    if "kin_" not in read(ROOT / "data" / "tag-schema.js"):
+        errors.append("tag-schema missing kin_ prefix")
+    if "weeklyEconomicTick" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must tick weekly cashflow")
+    if "pickWealthCrisis" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must lock a wealth crisis triad")
+    if "seedWealth" not in read(ROOT / "genesis.js"):
+        errors.append("genesis must seed numeric wealth")
+    if "stat-means" not in read(ROOT.parent / "index.html"):
+        errors.append("index.html missing household-means meter")
+    if "followUps: []" not in read(ROOT / "eventGenerator.js"):
+        errors.append("cloneOption must drop catalog followUps so weekly copy stays live")
+    if "composeWeekEncounter" not in read(ROOT / "week-encounter.js"):
+        errors.append("week-encounter missing composeWeekEncounter")
+    if "composeEncounterChoice" not in read(ROOT / "week-encounter.js"):
+        errors.append("week-encounter missing composeEncounterChoice")
+    if "figuresPresent" not in read(ROOT / "week-encounter.js"):
+        errors.append("week-encounter must consult figuresPresent")
+    if "figureEncounterChance" not in read(ROOT / "week-encounter.js"):
+        errors.append("week-encounter must use figureEncounterChance")
+    if "composeWeekEncounter" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must compose a live weekly encounter intro")
+    if "weekEncounter?.intro" not in read(ROOT / "chronicle-voice.js") and "weekEncounter.intro" not in read(ROOT / "chronicle-voice.js"):
+        errors.append("chronicle-voice must print the encounter intro in 本期紀事")
+    if "composeAlignedChronicle" not in read(ROOT / "text-monitor.js"):
+        errors.append("weekly gate must rebuild an option-aligned chronicle")
+    if "bindEncounterToOption" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must bind triad copy to the weekly encounter")
+    if "歷史人物現場" in read(ROOT / "ui.js"):
+        errors.append("ui.js must not print designer 歷史人物現場 chrome")
+    if "incident?.fact" in read(ROOT / "mental-breakdown-engine.js"):
+        errors.append("breakdown renderer must not dump catalog fact copy")
     if "把這一週過完，不做多餘的決定" in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must not recycle the canned fill option")
     if "EXCLUSION_TURNS" not in read(ROOT / "exclusion-buffer.js"):
@@ -421,8 +581,14 @@ def main() -> None:
     index_html = read(ROOT.parent / "index.html")
     if 'id="death-resolution"' not in index_html or 'id="btn-rebirth"' not in index_html:
         errors.append("index.html missing explicit death resolution panel")
-    if "重新投胎（開新局）" not in index_html:
-        errors.append("death panel missing rebirth button copy")
+    if "接受命運，開啟新的一生" not in index_html:
+        errors.append("death panel missing fate-accept rebirth button copy")
+    if "重新投胎（開新局）" in index_html:
+        errors.append("death panel must not keep the old reroll button copy")
+    if "重新投胎（開新局）" in read(ROOT / "life-resolution.js"):
+        errors.append("life-resolution must not keep the old reroll button copy")
+    if "重新投胎（開新局）" in read(ROOT / "ui.js"):
+        errors.append("ui.js must not keep the old reroll button copy")
     life_res = read(ROOT / "life-resolution.js")
     if "封閉測試" not in life_res or "測試版本" not in life_res:
         errors.append("session-close copy must name the closed-beta 18-year stage")
@@ -437,8 +603,8 @@ def main() -> None:
     for banned in ("身體還在", "能一週週寫下的日子到此為止"):
         if banned in life_res or banned in read(ROOT / "GameEngine.js"):
             errors.append(f"resolution copy still uses riddle closer: {banned}")
-    if "封閉測試" in read(ROOT / "ui.js"):
-        errors.append("ui.js must not hardcode closed-beta slogans outside the resolution dossier")
+    if re.search(r'textContent\s*=\s*[\'"]封閉測試', read(ROOT / "ui.js")):
+        errors.append("ui.js must not print closed-beta slogans outside the resolution dossier")
     for banned in ("還沒有名字的東西", "體內有一枚尚未被公開的標籤", "把影子留在原地", "數到三再眨眼", "命運的風鈴", "暗影在呼吸中交織", "聽起來輕", "好處變薄", "帳從別處扣"):
         if banned in fog:
             errors.append(f"fog-lexicon still uses riddle line: {banned}")
@@ -888,8 +1054,8 @@ def main() -> None:
         errors.append("script.js must re-export SHOW_REPUTATION_UI")
     if "age_lane" not in read(ROOT / "boundary.js"):
         errors.append("boundary must fail-close on age-lane mismatches")
-    if "contentAllowedForAge" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must age-gate actions before sampling")
+    if "contentAllowedForAge" not in read(ROOT / "eventGenerator.js") and "contentAllowedForAge" not in read(ROOT / "event-engine.js"):
+        errors.append("eventEngine must age-gate actions before sampling")
     if "incidentAllowed" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must drop age-illegal locked triads")
     if "age < 7" not in read(ROOT / "school-engine.js") and "age < 7 || age > 17" not in read(ROOT / "school-engine.js"):
@@ -920,8 +1086,8 @@ def main() -> None:
         errors.append("GameEngine sandbox missing ageGatedChoices")
     if "semantic_context" not in read(ROOT / "boundary.js"):
         errors.append("boundary must fail-close on semantic context mismatches")
-    if "semanticOptionAllowed" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must semantically filter sampled options")
+    if "semanticOptionAllowed" not in read(ROOT / "eventGenerator.js") and "semanticOptionAllowed" not in read(ROOT / "event-engine.js"):
+        errors.append("eventEngine must semantically filter sampled options")
     if "CHILD_MATURE_PATTERNS" not in read(DATA / "semantic-context-rules.js"):
         errors.append("semantic-context-rules missing child-mature / motion / leisure patterns")
     if "situationFrame" not in read(ROOT / "semantic-filter.js"):
@@ -936,18 +1102,22 @@ def main() -> None:
         errors.append("GameEngine sandbox missing asymmetricSurvival")
     if "tagInfluenceCap" not in game:
         errors.append("GameEngine sandbox missing tagInfluenceCap")
-    if "untaggedBaseline" not in game:
-        errors.append("GameEngine sandbox missing untaggedBaseline")
-    if "MAX_TAGS_PER_CHOICE" not in read(DATA / "tag-influence-rules.js"):
-        errors.append("tag-influence-rules missing MAX_TAGS_PER_CHOICE")
-    if "ensureUntaggedBaseline" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must reserve a tag-free baseline option")
-    if "selectInterveningTags" not in read(ROOT / "tag-influence.js"):
-        errors.append("tag-influence missing selectInterveningTags cap")
-    if "MAX_TAGS_PER_CHOICE" not in script_js:
-        errors.append("script.js must export tag-influence cap helpers")
     if "ensureTagCoverage" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must scan live tags with ensureTagCoverage")
+    if "mintTagDrivenTriad" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must mint tag-driven live triad options")
+    if "tagDrivenOnly" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator missing tagDrivenOnly gate")
+    if "liveTagMint" not in read(ROOT / "tag-choice-mint.js"):
+        errors.append("tag-choice-mint missing liveTagMint stamps")
+    if "collectTagLanes" not in read(ROOT / "tag-choice-mint.js"):
+        errors.append("tag-choice-mint missing collectTagLanes")
+    if "untaggedBaseline" in read(ROOT / "GameEngine.js") and "untaggedBaseline: true" in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must disable untaggedBaseline canned slots")
+    if "tagDrivenOnly: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing tagDrivenOnly")
+    if "tagDrivenOnly: true" not in genesis:
+        errors.append("genesis missing tagDrivenOnly flag")
     if "graftAsymmetricOptions" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must graft asymmetric survival options onto locked incidents")
     if "PREFIX_LINK_POOL" not in read(DATA / "tag-link-actions.js"):
@@ -966,8 +1136,14 @@ def main() -> None:
         errors.append("genesis missing asymmetricSurvival flag")
     if "tagInfluenceCap: true" not in genesis:
         errors.append("genesis missing tagInfluenceCap flag")
-    if "untaggedBaseline: true" not in genesis:
-        errors.append("genesis missing untaggedBaseline flag")
+    if "untaggedBaseline: true" in genesis:
+        errors.append("genesis must not keep untaggedBaseline canned slots")
+    if "MAX_TAGS_PER_CHOICE" not in read(DATA / "tag-influence-rules.js"):
+        errors.append("tag-influence-rules missing MAX_TAGS_PER_CHOICE")
+    if "selectInterveningTags" not in read(ROOT / "tag-influence.js"):
+        errors.append("tag-influence missing selectInterveningTags cap")
+    if "MAX_TAGS_PER_CHOICE" not in script_js:
+        errors.append("script.js must export tag-influence cap helpers")
     if "dynamicOpeningChronicle: true" not in genesis:
         errors.append("genesis missing dynamicOpeningChronicle flag")
     if "fourPillarProse: true" not in genesis:
@@ -984,6 +1160,62 @@ def main() -> None:
         errors.append("genesis missing exclusiveOptions flag")
     if "noOptionRecycling: true" not in genesis:
         errors.append("genesis missing noOptionRecycling flag")
+    if "dynamicOnTheFly: true" not in genesis:
+        errors.append("genesis missing dynamicOnTheFly flag")
+    if "zeroHardcodedTemplates: true" not in genesis:
+        errors.append("genesis missing zeroHardcodedTemplates flag")
+    if "liveChoiceMint: true" not in genesis:
+        errors.append("genesis missing liveChoiceMint flag")
+    if "contextualIntro: true" not in genesis:
+        errors.append("genesis missing contextualIntro flag")
+    if "figureWeave: true" not in genesis:
+        errors.append("genesis missing figureWeave flag")
+    if "encounterDrivenChoices: true" not in genesis:
+        errors.append("genesis missing encounterDrivenChoices flag")
+    if "staticWorldDatabase: true" not in genesis:
+        errors.append("genesis missing staticWorldDatabase flag")
+    if "predefinedDemographics: true" not in genesis:
+        errors.append("genesis missing predefinedDemographics flag")
+    if "liveWeeklyNarrative: true" not in genesis:
+        errors.append("genesis missing liveWeeklyNarrative flag")
+    if "textLogicMonitor: true" not in genesis:
+        errors.append("genesis missing textLogicMonitor flag")
+    if "semanticGate: true" not in genesis:
+        errors.append("genesis missing semanticGate flag")
+    if "logicFilter: true" not in genesis:
+        errors.append("genesis missing logicFilter flag")
+    if "causalityGate: true" not in genesis:
+        errors.append("genesis missing causalityGate flag")
+    if "varietyGuard: true" not in genesis:
+        errors.append("genesis missing varietyGuard flag")
+    if "wealthEngine: true" not in genesis:
+        errors.append("genesis missing wealthEngine flag")
+    if "bankruptcyCrisis: true" not in genesis:
+        errors.append("genesis missing bankruptcyCrisis flag")
+    if "npcSocialNetwork: true" not in genesis:
+        errors.append("genesis missing npcSocialNetwork flag")
+    if "kinDeathCrisis: true" not in genesis:
+        errors.append("genesis missing kinDeathCrisis flag")
+    if "inspectPublicLine" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor missing inspectPublicLine")
+    if "gateWeeklyOutput" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor missing gateWeeklyOutput")
+    if "VARIATION_AXES" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor missing variation matrix")
+    if "filterPublicLine" not in read(ROOT / "text-logic-filter.js"):
+        errors.append("text-logic-filter missing filterPublicLine")
+    if "scanLogicFaults" not in read(ROOT / "text-logic-filter.js"):
+        errors.append("text-logic-filter missing scanLogicFaults")
+    if "pickLiveChoiceLane" not in read(ROOT / "text-logic-filter.js"):
+        errors.append("text-logic-filter missing pickLiveChoiceLane")
+    if "filterPublicLine" not in read(ROOT / "text-monitor.js"):
+        errors.append("text-monitor must run the logic filter before UI")
+    if "gateWeeklyOutput" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must re-gate restored currentEvent")
+    if "gateWeeklyOutput" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must gate weekly copy through text-monitor")
+    if "gateDeathCopy" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine must gate death copy through text-monitor")
     if "exclusionBuffer" not in genesis:
         errors.append("genesis must initialize exclusionBuffer")
     if "ensureTagCoverage" not in script_js:
@@ -999,6 +1231,16 @@ def main() -> None:
         errors.append("script.js must export the permanent life lock")
     if "SAVE_KEY" not in script_js or "century_life_save" not in read(ROOT / "life-persist.js"):
         errors.append("script.js must export the localStorage save key")
+    if "HALL_KEY" not in script_js or "century_hall_of_fame" not in read(ROOT / "life-persist.js"):
+        errors.append("script.js must export the Hall of Fame storage key")
+    if "composeMementoCard" not in script_js:
+        errors.append("script.js must export composeMementoCard")
+    if "openHallOfFame" not in script_js:
+        errors.append("boot loop must open the Hall of Fame without resetting")
+    if "openHallOfFame" not in ui_js or "readHallOfFame" not in ui_js:
+        errors.append("ui.js must paint Hall of Fame cards")
+    if "death-weeks" not in ui_js:
+        errors.append("ui.js must render weeks lived on the memento card")
     if "EVENT_COOLDOWN_CAP" not in script_js:
         errors.append("script.js must export event cooldown helpers")
     if "assembleWeeklyChronicle" not in script_js:
@@ -1025,6 +1267,8 @@ def main() -> None:
         errors.append("script.js must export ThemeManager helpers")
     if "composeExclusiveFill" not in script_js:
         errors.append("script.js must export exclusive option minting")
+    if "mintTagDrivenTriad" not in script_js:
+        errors.append("script.js must export tag-driven triad minting")
     if "BETA_CONFIG" not in script_js:
         errors.append("script.js must export the closed-beta config module")
     if "describeSocialFeedback" not in read(ROOT / "eventGenerator.js"):
@@ -1068,6 +1312,26 @@ def main() -> None:
         errors.append("index.html still has English masthead chrome")
     if "publicTagLabel" not in ui_js:
         errors.append("ui.js must map tag chips through publicTagLabel")
+    if "tagGloss" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss missing tagGloss mapping")
+    if "TAG_GLOSS" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss missing TAG_GLOSS dictionary")
+    if "composeTagGloss" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss missing composeTagGloss dynamic mapping")
+    if "ethnicityObservation" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss must mint ethnicity gloss from observation and region")
+    if "GEO_BAND_GLOSS" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss missing GEO_BAND_GLOSS")
+    if "hook_:" not in read(DATA / "tag-gloss.js") or "current_:" not in read(DATA / "tag-gloss.js"):
+        errors.append("tag-gloss PREFIX_GLOSS must cover hook and current tags")
+    if "decorateTagChip" not in ui_js or "bindTagTooltips" not in ui_js:
+        errors.append("ui.js must attach hover glosses to tag chips")
+    if "tag-tooltip" not in read(ROOT.parent / "style.css"):
+        errors.append("style.css missing tag tooltip skin")
+    if "position: fixed" not in read(ROOT.parent / "style.css") or "document.body.append" not in read(ROOT / "tag-tooltip.js"):
+        errors.append("tag tooltip must be fixed to the viewport and appended to body")
+    if "tagGloss" not in script_js or "composeTagGloss" not in script_js:
+        errors.append("script.js must export tag hover glosses")
     if "zhCause" not in read(ROOT / "mortality-engine.js"):
         errors.append("mortality-engine must print Chinese cause names")
     if not (DATA / "ui-zh.js").exists():
@@ -1129,18 +1393,16 @@ def main() -> None:
         errors.append("eventGenerator must pass ctx/rng into renderAdultIncident")
     if "renderSchoolIncident(schoolIncident, ctx, rng)" not in gen:
         errors.append("eventGenerator must pass ctx/rng into renderSchoolIncident")
-    if "renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng)" not in gen and "renderDailyNarrative(dailyTexture, factLocked ? null : ctx, rng)" not in gen:
-        errors.append("eventGenerator must pass daily speech ctx only when the week is not fact-locked")
     if "${date.year}年${date.month}月${date.day}日" not in gen:
         errors.append("eventGenerator must stamp the fortnight date into 本期紀事")
     if "sliceOfLife(rng, stage, era, ctx)" not in gen:
         errors.append("eventGenerator must include sliceOfLife in the weekly chronicle")
-    if "statusLine(ctx.stats || character.stats, ctx.tags, ledger, ctx)" not in gen:
-        errors.append("eventGenerator must include statusLine in the weekly chronicle")
-    if "variatorLine" not in gen or "dailyLine" not in gen:
-        errors.append("eventGenerator must keep weaveVariatorLine and renderDailyNarrative in the chronicle")
-    if "...(passive.notes || [])" not in gen:
-        errors.append("eventGenerator must include weeklyPassive notes in the chronicle")
+    if "gateWeeklyOutput" not in gen:
+        errors.append("eventGenerator must gate weekly chronicle through text monitor")
+    if "assembleWeeklyChronicle" not in gen:
+        errors.append("eventGenerator must assemble the weekly chronicle")
+    if "pickDailyTexture" not in gen:
+        errors.append("eventGenerator must still pick daily texture for state memory")
     if "culturalNameMatching: true" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing culturalNameMatching")
     if "indigenousNaming: true" not in read(ROOT / "GameEngine.js"):
@@ -1297,8 +1559,78 @@ def main() -> None:
         errors.append("world-event-engine must use year-local country")
     if "getSettlementCountry" not in read(ROOT / "mortality-engine.js"):
         errors.append("mortality-engine must use year-local country")
-    if "pickWeeklyTriad" not in read(ROOT / "eventGenerator.js"):
-        errors.append("eventGenerator must use pickWeeklyTriad for unique tag-driven choices")
+    if "mintTagDrivenTriad" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must use mintTagDrivenTriad for unique tag-driven choices")
+    if "sieveWeeklyEvents" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must sieve the weekly pool through event-engine")
+    if "meetsPrerequisites" not in read(ROOT / "event-engine.js"):
+        errors.append("event-engine missing meetsPrerequisites")
+    if "indexEventPool" not in read(ROOT / "event-engine.js"):
+        errors.append("event-engine missing indexEventPool")
+    if "eventWeight" not in read(ROOT / "event-engine.js"):
+        errors.append("event-engine missing eventWeight")
+    if "WEEKLY_EVENT_POOL" not in read(DATA / "events-pool.js"):
+        errors.append("events-pool missing WEEKLY_EVENT_POOL")
+    if "prerequisiteFilter: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing prerequisiteFilter")
+    if "weightedEventSample: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing weightedEventSample")
+    if "meetsPrerequisites" not in script_js:
+        errors.append("script.js must export event-engine prerequisite APIs")
+    if "weeklyTagLifecycle" not in read(ROOT / "tag-lifecycle-engine.js"):
+        errors.append("tag-lifecycle-engine missing weeklyTagLifecycle")
+    if "DECAY_RULES" not in read(DATA / "tag-lifecycle-rules.js"):
+        errors.append("tag-lifecycle-rules missing DECAY_RULES")
+    if "EVOLUTION_RULES" not in read(DATA / "tag-lifecycle-rules.js"):
+        errors.append("tag-lifecycle-rules missing EVOLUTION_RULES")
+    if "tagDecayEngine: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing tagDecayEngine")
+    if "tagEvolution: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing tagEvolution")
+    if "tagDecayEngine: true" not in genesis:
+        errors.append("genesis missing tagDecayEngine flag")
+    if "weeklyTagLifecycle" not in script_js:
+        errors.append("script.js must export tag lifecycle APIs")
+    if "acquired_desperate_survival" not in read(DATA / "ui-zh.js"):
+        errors.append("ui-zh missing evolved survival tag labels")
+    if "shouldForceBreakdown" not in read(ROOT / "mental-breakdown-engine.js"):
+        errors.append("mental-breakdown-engine missing shouldForceBreakdown")
+    if "pickBreakdownIncident" not in read(ROOT / "mental-breakdown-engine.js"):
+        errors.append("mental-breakdown-engine missing pickBreakdownIncident")
+    if "SANITY_DANGER" not in read(ROOT / "mental-breakdown-engine.js"):
+        errors.append("mental-breakdown-engine missing SANITY_DANGER threshold")
+    if "BREAKDOWN_INCIDENTS" not in read(DATA / "breakdown-incidents.js"):
+        errors.append("breakdown-incidents missing BREAKDOWN_INCIDENTS")
+    if "evaluateEraCrisis" not in read(ROOT / "history-crisis-engine.js"):
+        errors.append("history-crisis-engine missing evaluateEraCrisis")
+    if "eraCrisis" not in read(ROOT / "risk-calculator.js"):
+        errors.append("crisisPressure must fold eraCrisis into personal crisis index")
+    if "pickBreakdownIncident" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must force a mental-breakdown locked triad")
+    if "attachEraCrisis" not in read(ROOT / "eventGenerator.js"):
+        errors.append("eventGenerator must attach eraCrisis to the fortnight")
+    if "mentalBreakdown: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing mentalBreakdown")
+    if "eraCrisisIndex: true" not in read(ROOT / "GameEngine.js"):
+        errors.append("GameEngine sandbox missing eraCrisisIndex")
+    if "mentalBreakdown: true" not in genesis:
+        errors.append("genesis missing mentalBreakdown flag")
+    if "eraCrisisIndex: true" not in genesis:
+        errors.append("genesis missing eraCrisisIndex flag")
+    if "shouldForceBreakdown" not in script_js or "evaluateEraCrisis" not in script_js:
+        errors.append("script.js must export sanity breakdown and era-crisis APIs")
+    if "撐不住了" not in read(ROOT / "ui.js"):
+        errors.append("ui.js must lock the gazette kicker for mental collapse")
+    trauma_tags = read(DATA / "trauma-tags-database.js")
+    for needle in ("trauma_ptsd", "trauma_melancholia", "trauma_persecution", "trauma_persona_crack"):
+        if needle not in trauma_tags:
+            errors.append(f"trauma tags missing {needle}")
+        if needle not in read(DATA / "tag-gloss.js"):
+            errors.append(f"tag-gloss missing {needle}")
+    if "SANITY_SURVIVAL_CURVE" not in read(DATA / "mortality-tag-weights.js"):
+        errors.append("mortality-tag-weights missing SANITY_SURVIVAL_CURVE")
+    if "SANITY_SURVIVAL_CURVE" not in read(ROOT / "mortality-engine.js"):
+        errors.append("mortality-engine must apply sanity to weekly survival")
     if "ignoreTags" in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must not bypass tag matching with ignoreTags")
     tag_choices = read(DATA / "tag-choice-actions.js")

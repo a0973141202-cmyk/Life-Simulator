@@ -44,7 +44,12 @@ export function attachLifeContext(ctx = {}) {
   const parents = blood.parents || {};
   const classId = character.familyClassId || ctx.familyClassId || "peasant";
   const classRow = FAMILY_CLASSES.find((row) => row.id === classId) || FAMILY_CLASSES[0];
-  const means = Number(character.means ?? character.stats?.wealth ?? 40);
+  const means = Number(
+    character.wealth
+      ? (character.means ?? 40)
+      : (character.means ?? character.stats?.wealth ?? 40),
+  );
+  const wealthBand = character.wealth?.band || "";
   const tags = uniqueTags([
     ...(ctx.tags || []),
     ...(character.tags || []),
@@ -75,10 +80,28 @@ export function attachLifeContext(ctx = {}) {
     || String(id).startsWith("current_date_")
   ));
   const year = ctx.year ?? ctx.time?.year ?? character.birthYear;
-  const fatherAlive = parentAlive(parents.father, tags, "father", year);
-  const motherAlive = parentAlive(parents.mother, tags, "mother", year);
+  let fatherAlive = parentAlive(parents.father, tags, "father", year);
+  let motherAlive = parentAlive(parents.mother, tags, "mother", year);
+  if (character.npcNetwork?.npcs?.length) {
+    const fatherNpc = character.npcNetwork.npcs.find((npc) => npc.role === "father");
+    const motherNpc = character.npcNetwork.npcs.find((npc) => npc.role === "mother");
+    if (fatherNpc) {
+      fatherAlive = fatherNpc.alive !== false
+        && !(fatherNpc.deathYear != null && year != null && Number(fatherNpc.deathYear) <= Number(year));
+    }
+    if (motherNpc) {
+      motherAlive = motherNpc.alive !== false
+        && !(motherNpc.deathYear != null && year != null && Number(motherNpc.deathYear) <= Number(year));
+    }
+  }
   let economy = "getting_by";
-  if (
+  if (wealthBand === "bankrupt" || wealthBand === "destitute" || wealthBand === "indebted") {
+    economy = "destitute";
+  } else if (wealthBand === "poor") {
+    economy = "poor";
+  } else if (wealthBand === "comfortable" || wealthBand === "affluent") {
+    economy = "comfortable";
+  } else if (
     means < 22
     || socio.includes("socio_extreme_poverty")
     || tags.includes("household_hungry")

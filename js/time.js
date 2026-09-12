@@ -89,6 +89,18 @@ export function createClock(birthYearOrDate, birthWeek) {
 }
 
 /** Jump the clock to an exact birthday (leaplings use Feb 28 in common years). */
+/** Rebuild a clock from birth + lived turns so a save cannot time-travel. */
+export function rebuildClock(clock, characterOrDate, birthWeek) {
+  const birth = resolveBirthDate(characterOrDate, birthWeek);
+  const lived = Number.isFinite(clock?.totalTurnsLived)
+    ? Math.max(0, Math.floor(clock.totalTurnsLived))
+    : Number.isFinite(clock?.year) && Number.isFinite(birth?.year)
+      ? Math.max(0, (Math.floor(clock.year) - birth.year) * TURNS_PER_YEAR)
+      : 0;
+  const date = dateAtAgeTurn(birth, Math.floor(lived / TURNS_PER_YEAR), lived % TURNS_PER_YEAR);
+  return stampClock(date, lived);
+}
+
 export function createClockAtAge(birthYearOrDate, ageYears = PLAY_AGE_MIN, birthWeek) {
   const birth = resolveBirthDate(birthYearOrDate, birthWeek);
   const targetAge = Math.max(0, Math.floor(ageYears));

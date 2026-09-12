@@ -5,6 +5,7 @@
  */
 import { scrubPublicText } from "./data/public-text.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
+import { monitorPublicText } from "./text-monitor.js";
 
 function placeOf(character) {
   return character?.birthplaceLabel
@@ -21,11 +22,15 @@ function endPlaceOf(character) {
     || placeOf(character);
 }
 
-function eraPressureLine(era, upheaval) {
+function eraPressureLine(era, upheaval, eraCrisis) {
   const bits = [];
   if (era?.name) bits.push(era.name);
   if (upheaval?.label) bits.push(`當時壓在街上的是${upheaval.label}`);
   if (era?.summary) bits.push(era.summary);
+  const score = Number(eraCrisis?.score || 0);
+  if (score >= 70) bits.push("這一季的時代已經在收人命");
+  else if (score >= 42) bits.push("這一季的時代把人往死裏擠");
+  else if (score >= 22) bits.push("街上已經比往年緊");
   return scrubPublicText(bits.join("。"));
 }
 
@@ -152,6 +157,7 @@ export function composeLifeResolution({
   detail = "",
   era = null,
   upheaval = null,
+  eraCrisis = null,
   playAgeCap = null,
   temporaryCap = false,
 } = {}) {
@@ -200,14 +206,20 @@ export function composeLifeResolution({
       const clean = scrubPublicText(cause);
       return clean && !/[。！？]$/.test(clean) ? `${clean}。` : clean;
     })(),
-    eraPressure: eraPressureLine(era, upheaval),
-    rebirthLabel: "重新投胎（開新局）",
+    eraPressure: eraPressureLine(era, upheaval, eraCrisis),
+    rebirthLabel: "接受命運，開啟新的一生",
   };
-  resolution.epitaph = scrubPublicText([
+  resolution.epitaph = monitorPublicText(() => 0.41, scrubPublicText([
     `${name}，生於${birthplace}。`,
     resolution.ageLine + "。",
     resolution.cause,
     resolution.eraPressure,
-  ].filter(Boolean).join(""));
+  ].filter(Boolean).join("")), {
+    character,
+    year: time?.year,
+    ageYears: time?.ageYears,
+    tags: character?.tags,
+    stats: character?.stats,
+  }, { kind: "death" });
   return resolution;
 }

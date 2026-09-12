@@ -58,6 +58,14 @@ const PREFIX_BEATS = [
     "出身不是選擇。它是別人先看見的那一行。",
     "你按這一行事，不把力氣花在否認它。",
   ], [6, 120], { direction: "endure", hooks: ["social"] }],
+  ["wealth_", "link_wealth", "按這一期還剩的錢和還沒還的帳先過眼前", { wealth: -1, mood: -1 }, [
+    "口袋和債比出身先決定這一週能走哪條巷。",
+    "你先算還得起的那一筆，再談別的。",
+  ], [8, 120], { direction: "endure", hooks: ["commerce", "scarcity"] }],
+  ["kin_", "link_kin", "按家裏還在的人或已經不在的人改這一週的走法", { mood: -1 }, [
+    "至親的臉色、缺席或仇隙比街坊閒話先到。",
+    "你先看屋裏還認不認你，再談外頭。",
+  ], [8, 120], { direction: "endure", hooks: ["family", "home"] }],
   ["settlement_", "link_settlement", "用這座城或這個村子認得的走法過這一週", { intelligence: 1 }, [
     "門牌會變。巷的氣味比較慢。",
     "你走熟路。熟路也會突然被封。",

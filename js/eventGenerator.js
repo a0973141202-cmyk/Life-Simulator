@@ -1,37 +1,62 @@
-import { ACTION_POOL } from "./actions.js";
 import { filterActionsByBoundary } from "./boundary.js";
-import { ageBand, classifyLane, contentAllowedForAge, incidentAllowed } from "./age-gate.js";
+import { ageBand, classifyLane, incidentAllowed } from "./age-gate.js";
 import { childhoodClimate } from "./early-child-filter.js";
-import { scanSemanticMismatches, scrubSemanticText, semanticOptionAllowed, situationFrame } from "./semantic-filter.js";
-import { EARLY_CHILD_SURVIVAL_POOL } from "./data/early-child-survival-actions.js";
+import { scanSemanticMismatches } from "./semantic-filter.js";
 import { applyChaosToTriad, pickChaosProfile } from "./chaos-engine.js";
 import { STAT_KEYS, clampStat, getLifeStage } from "./constants.js";
-import { attachLifeProgress, progressAllowsAction } from "./life-stage-manager.js";
-import { TURNING_POINT_POOL } from "./data/life-stage-catalog.js";
-import { canonicalizeEffects, canonicalizeStats, gateStatValue } from "./stat-canon.js";
+import { attachLifeProgress } from "./life-stage-manager.js";
+import { canonicalizeEffects, canonicalizeStats } from "./stat-canon.js";
 import { crisisPressure } from "./consequence-engine.js";
-import { AWAKENING_ACTION_POOL } from "./data/awakening-actions.js";
-import { CRISIS_ACTION_POOL } from "./data/crisis-actions.js";
-import { SANDBOX_ACTION_POOL } from "./data/sandbox-actions.js";
+import {
+  eraPlaceAllows,
+  eventWeight,
+  meetsPrerequisites,
+  sieveWeeklyEvents,
+} from "./event-engine.js";
 import { getActiveHistory, getEraForYear, findCity } from "./data.js";
 import { currentEnvironmentTags } from "./data/seasons.js";
 import { makeDate } from "./data/calendar.js";
 import { dressOption } from "./hint-engine.js";
 import { modifyResolutionForTrauma } from "./trauma-engine.js";
+import {
+  consumeBreakdownLock,
+  pickBreakdownIncident,
+  renderBreakdownIncident,
+} from "./mental-breakdown-engine.js";
+import {
+  canMintWealthStake,
+  consumeWealthLock,
+  mintWealthStakeOption,
+  pickWealthCrisis,
+  renderWealthCrisis,
+} from "./wealth-engine.js";
+import {
+  canMintKinBond,
+  consumeKinLock,
+  kinVoiceMeta,
+  mintKinBondOption,
+  pickKinCrisis,
+  renderKinCrisis,
+} from "./npc-social-engine.js";
+import { attachEraCrisis } from "./history-crisis-engine.js";
 import { applyHiddenOutcome, ensureLedger } from "./ledger.js";
-import { collectDailyActions, pickDailyTexture, rememberDailyState, renderDailyNarrative } from "./daily-engine.js";
+import { collectDailyActions, pickDailyTexture, rememberDailyState } from "./daily-engine.js";
 import { modifyResolutionForSchool, pickSchoolIncident, renderSchoolIncident } from "./school-engine.js";
 import { modifyResolutionForCaste } from "./perp-caste-engine.js";
 import { modifyResolutionForAdult, pickAdultIncident, renderAdultIncident } from "./adult-engine.js";
 import { attachWorldContext, modifyResolutionForWorld, pickWorldEvent, renderWorldEvent } from "./world-event-engine.js";
 import { attachUpheaval, publicUpheavalView } from "./upheaval-engine.js";
 import {
+  figuresPresent,
+  figureEncounterChance,
   modifyResolutionForFigure,
   narrativePulseAllowed,
   pickFigureEncounter,
   renderFigureEncounter,
   tickHistory,
 } from "./history-engine.js";
+import { bindEncounterToOption, composeWeekEncounter } from "./week-encounter.js";
+import { gateWeeklyOutput } from "./text-monitor.js";
 import { evaluateWeeklyMortality } from "./mortality-engine.js";
 import { chance, pick, randInt } from "./rng.js";
 import { findSettlement, getSettlementCountry } from "./settlements.js";
@@ -40,92 +65,26 @@ import { uniqueTags } from "./tag-system.js";
 import { describeSocialFeedback } from "./social-feedback.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { assembleWeeklyChronicle, chronicleStageLine, chronicleSituationLine, scanNarrativeFacts } from "./chronicle-voice.js";
-import { composeHistoryPulse, scrubEraCopy } from "./dynamic-prose.js";
+import { composeFollowBeat, composeHistoryPulse, composeLiveFollowUp, composeStageClause, composeStatusRecord, scrubEraCopy } from "./dynamic-prose.js";
 import { consumeOpeningWeekLead } from "./opening-chronicle.js";
 import { eventOutline, rememberTriggeredMany } from "./event-memory.js";
 import { beginTextTurn, filterFreshByText, rememberTextSnippet } from "./text-history.js";
-import { maybeVaryChoice, weaveVariatorLine } from "./narrative-variator.js";
+import { maybeVaryChoice } from "./narrative-variator.js";
 import { attachLifeContext, contextAllowsOption } from "./life-context.js";
 import { beginExclusionTurn, optionExcluded, rememberExcluded } from "./exclusion-buffer.js";
 import { composeExclusiveFill } from "./exclusive-fill.js";
-import { TAG_DRIVEN_ACTION_POOL } from "./data/tag-choice-actions.js";
-import { BLOODLINE_CHOICE_POOL } from "./data/bloodline-choice-actions.js";
-import { PREFIX_LINK_POOL } from "./data/tag-link-actions.js";
-import { ASYMMETRIC_SURVIVAL_POOL } from "./data/asymmetric-survival-actions.js";
+import { ensureDistinctChoiceTriad } from "./choice-dedupe.js";
+import { textsTooSimilar } from "./choice-similarity.js";
+import { mintTagDrivenTriad, remintLockedTriadText } from "./tag-choice-mint.js";
 import { attachOrganicContext } from "./organic-trigger.js";
 import { ensureTagCoverage, graftAsymmetricOptions } from "./tag-link-engine.js";
-import { ensureUntaggedBaseline, isUntaggedBaseline, stampTagInfluence } from "./tag-influence.js";
+import { isUntaggedBaseline, stampTagInfluence } from "./tag-influence.js";
 import {
   collectCtxTags,
   ensureChoiceMemory,
-  isTagGated,
-  pickWeeklyTriad,
   rememberOfferedChoices,
   stampChoiceFingerprint,
-  textsTooSimilar,
-  whenTagsMatch,
 } from "./choice-pool.js";
-
-function inRange(value, range) {
-  if (!range) return true;
-  return value >= range[0] && value <= range[1];
-}
-
-function matchesAction(action, ctx) {
-  const when = action.when || {};
-  if (!contentAllowedForAge(action, ctx)) return false;
-  if (!semanticOptionAllowed(action, ctx)) return false;
-  if (when.age && !inRange(ctx.ageYears, when.age)) return false;
-  if (when.year && !inRange(ctx.year, when.year)) return false;
-  if (when.stages && !when.stages.includes(ctx.stage.id)) return false;
-  if (when.classes && !when.classes.includes(ctx.familyClassId)) return false;
-  if (when.regions && !when.regions.includes(ctx.region)) return false;
-  if (when.countriesAny) {
-    const country = ctx.country || ctx.character?.country || "";
-    if (!when.countriesAny.some((item) => country.includes(item))) return false;
-  }
-  if (!whenTagsMatch(when, ctx)) return false;
-  if (when.stats) {
-    for (const [key, range] of Object.entries(when.stats)) {
-      const value = gateStatValue(ctx, key);
-      if (value == null) continue;
-      if (!inRange(value, range)) return false;
-    }
-  }
-  if (when.occupationAny) {
-    const occupation = ctx.character?.occupation || "";
-    if (!when.occupationAny.some((item) => occupation === item || occupation.includes(item))) return false;
-  }
-  const ledger = ctx.ledger || ctx.character?.ledger || {};
-  if (when.wanted && !inRange(ledger.wanted ?? 0, when.wanted)) return false;
-  if (when.heat && !inRange(ledger.heat ?? 0, when.heat)) return false;
-  if (when.trust && !inRange(ledger.trust ?? 50, when.trust)) return false;
-  if (when.opinion && !inRange(ledger.opinion ?? 50, when.opinion)) return false;
-  if (when.politicalCapital && !inRange(ledger.politicalCapital ?? 0, when.politicalCapital)) return false;
-  if (when.pathsAny) {
-    const minXp = when.pathMin ?? 1;
-    if (!when.pathsAny.some((path) => (ledger.paths?.[path] || 0) >= minXp)) return false;
-  }
-  if (when.pathsNone && when.pathsNone.some((path) => (ledger.paths?.[path] || 0) >= (when.pathMin ?? 1))) {
-    return false;
-  }
-  if (!contextAllowsOption(action, ctx)) return false;
-  if (!progressAllowsAction(action, ctx)) return false;
-  if (ctx.noOptionRecycling && optionExcluded(ctx.character, action.id, action.text)) return false;
-  return true;
-}
-
-function matchesAgeYear(action, ctx) {
-  const when = action.when || {};
-  if (!contentAllowedForAge(action, ctx)) return false;
-  if (!semanticOptionAllowed(action, ctx)) return false;
-  if (when.age && !inRange(ctx.ageYears, when.age)) return false;
-  if (when.year && !inRange(ctx.year, when.year)) return false;
-  if (!contextAllowsOption(action, ctx)) return false;
-  if (!progressAllowsAction(action, ctx)) return false;
-  if (ctx.noOptionRecycling && optionExcluded(ctx.character, action.id, action.text)) return false;
-  return true;
-}
 
 function jitterEffects(rng, effects) {
   const result = {};
@@ -147,7 +106,7 @@ function cloneOption(rng, action, index, ctx = {}) {
     id: action.id,
     text: action.text,
     effects: jitterEffects(rng, action.effects),
-    followUps: (action.followUps || []).slice(),
+    followUps: [],
     addTags: action.addTags ? action.addTags.slice() : [],
     risk: action.risk ? { ...action.risk, effects: { ...action.risk.effects } } : null,
     hooks: action.hooks ? action.hooks.slice() : (action.when?.hooksAny || []).slice(),
@@ -168,6 +127,8 @@ function cloneOption(rng, action, index, ctx = {}) {
     trauma: action.trauma ? { ...action.trauma, tags: (action.trauma.tags || []).slice() } : null,
     traumaVictim: Boolean(action.traumaVictim || action.trauma),
     traumaNonsexual: action.traumaNonsexual !== false,
+    breakdownIncident: Boolean(action.breakdownIncident),
+    breakdownIncidentId: action.breakdownIncidentId || null,
     schoolIncident: Boolean(action.schoolIncident),
     schoolIncidentId: action.schoolIncidentId || null,
     schoolKind: action.schoolKind || null,
@@ -211,6 +172,16 @@ function cloneOption(rng, action, index, ctx = {}) {
     tagInfluenceCount: Math.min(3, action.tagInfluenceCount || (action.interveningTags || []).length || 0),
     tagInfluenceCapped: Boolean(action.tagInfluenceCapped),
     exclusiveFill: Boolean(action.exclusiveFill),
+    liveFollowUp: action.liveFollowUp || "",
+    liveTagMint: Boolean(action.liveTagMint),
+    zeroHardcodedTemplates: Boolean(action.zeroHardcodedTemplates),
+    driverTags: (action.driverTags || []).slice(),
+    wealthStake: Boolean(action.wealthStake),
+    stakeCash: action.stakeCash || null,
+    stakeChance: action.stakeChance || null,
+    kinBond: Boolean(action.kinBond),
+    kinCrisis: Boolean(action.kinCrisis),
+    wealthCrisis: Boolean(action.wealthCrisis),
     untaggedBaseline: Boolean(action.untaggedBaseline || isUntaggedBaseline(action)),
     organic: action.organic || null,
     organicContexts: action.organicContexts ? action.organicContexts.slice() : (action.when?.organicContexts || []).slice(),
@@ -219,47 +190,15 @@ function cloneOption(rng, action, index, ctx = {}) {
 }
 
 function statusLine(stats, tags, ledger, ctx = {}) {
-  const bits = [];
-  if (stats.health <= 25) bits.push("體格很差：走路會喘，傷口或發燒都還沒退");
-  else if (stats.health >= 80) bits.push("體格還撐得住：能提水、能走完這一週要走的路");
-  if (stats.sanity <= 25) bits.push("神智差：睡不好、提不起勁、容易發呆或哭");
-  else if (stats.sanity >= 80) bits.push("這一陣子還能睡得著，話也說得清楚");
-  if (tags.includes("勤學") || tags.includes("acquired_勤學") || tags.includes("parent_trait_math_aptitude")) bits.push("手裏還有沒做完的功課或帳");
-  if (tags.includes("戰火") || tags.includes("hook_war")) bits.push("爆炸和槍聲還沒停，窗紙仍在抖");
-  if (tags.includes("socio_extreme_poverty") || tags.includes("socio_working_poor") || tags.includes("底層開局") || tags.includes("household_hungry")) {
-    bits.push("家裏仍在數每一粒米、每一口剩飯");
-    if ((stats.health ?? 50) <= 40) {
-      bits.push("這兩週雙腿腫得發亮，按下去的坑很久才彈回來，家裏的人說這是水腫");
-    }
-  }
-  if (tags.includes("trait_barometric_sense") || tags.includes("hook_weather") || tags.includes("current_env_extreme_cold") || tags.includes("current_env_extreme_heat")) bits.push("你比別人更早頭痛或關節痛，知道天氣要變");
-  if (tags.includes("ethnicity_inuit") || tags.includes("trait_polar_thermogenesis")) bits.push("嚴寒對你比較慢才咬進骨頭，但凍傷仍可能發生");
-  if (tags.includes("current_date_winter") || tags.includes("current_env_polar_night")) bits.push("這一週冷到哈氣在門框上結冰");
-  if (tags.includes("current_date_summer") || tags.includes("current_env_extreme_heat")) bits.push("熱到中暑：口乾、頭暈、不想走動");
-  if (tags.includes("current_date_wet_season") || tags.includes("current_env_monsoon")) bits.push("衣服乾不了，傷口和咳嗽都更重");
-  if (tags.includes("mood_depressed")) bits.push("連續幾天吃不下、不想說話");
-  if (tags.includes("mood_euphoric")) bits.push("過於興奮：話多、步子快、容易判斷錯");
-  if (tags.includes("socio_extreme_poverty") || tags.includes("socio_war_displacement")) bits.push("出身仍決定你能走哪條巷、能不能進店");
-  if (tags.includes("acquired_wanted") || tags.includes("path_crime")) bits.push("通緝或地下買賣正在改寫你能走的路");
-  if (tags.includes("path_politics") || tags.includes("path_historical")) bits.push("派系和檔案讓這一週的談話都要先看臉色");
-  if (tags.includes("path_militant")) bits.push("持槍的人或巡邏隊讓普通日子也要躲路檢");
-  if (tags.some((tag) => tag.startsWith("trauma_"))) bits.push("舊傷一碰就痛，或一聽見類似的聲音就發抖");
-  if (tags.some((tag) => tag.startsWith("household_"))) bits.push("家裏仍有人會動手、鎖門，或把飯扣下來");
-  if (tags.includes("school_bully") || tags.includes("school_gang") || tags.includes("school_ringleader")) {
-    bits.push("院子裏仍有人盯著你，準備攔路或勒索");
-  }
-  if (tags.includes("school_bullied") || tags.includes("school_hated")) bits.push("有人把你寫在下手或報復的名單上");
-  if (tags.includes("school_expelled") || tags.includes("school_record")) bits.push("學籍或處分正在改寫你能不能進校門");
-  if (tags.some((tag) => tag.startsWith("caste_"))) bits.push("有人在核對你是不是「那一掛」，核對完會收費或動手");
-  if ((ctx.upheaval?.tier || 0) >= 2) bits.push(`時局是${ctx.upheaval.label}：糧店、抓人、或逃難比平常更硬`);
-  else if (ctx.upheaval?.id) bits.push(`大環境仍是${ctx.upheaval.label}`);
-  const safeBits = bits.filter((bit) => !scanSemanticMismatches(bit, ctx).length);
-  const body = safeBits.length ? safeBits.join("；") + "。" : (situationFrame(ctx).strict ? "這一週身體還能走動，帳也還沒被砸門來收。" : "這一週沒有新的病，也沒有新的工。");
+  ctx.stats = ctx.stats || stats;
+  ctx.tags = ctx.tags || tags;
+  const body = composeStatusRecord(() => 0.41, ctx);
   const social = describeSocialFeedback(ledger || {}, {
     salt: (stats.health || 0) + (stats.sanity || 0) * 2,
     upheaval: ctx.upheaval,
+    ctx,
   });
-  return `${body}\n${social}`;
+  return [body, social].filter(Boolean).join("\n");
 }
 
 function sliceOfLife(rng, stage, era, ctx = {}) {
@@ -293,14 +232,14 @@ export function weeklyPassive(rng, ctx) {
 
   if (ctx.ageYears >= 50 && chance(rng, 0.12 + (ctx.ageYears - 50) * 0.004)) {
     effects.health = (effects.health || 0) - 1;
-    notes.push("年紀讓你這一週更容易喘，提水或上樓都比以前慢。");
+    notes.push(chronicleSituationLine(rng, ctx));
   }
   if (ctx.ageYears >= 75 && chance(rng, 0.18)) {
     effects.health = (effects.health || 0) - 1;
   }
   if (ctx.stats.sanity <= 20 && chance(rng, 0.2)) {
     effects.health = (effects.health || 0) - 1;
-    notes.push("連續睡不好、吃不下，體重在掉。");
+    notes.push(chronicleSituationLine(rng, ctx));
   }
   if (ctx.stats.health <= 20 && chance(rng, 0.15)) {
     effects.sanity = (effects.sanity || 0) - 1;
@@ -328,34 +267,26 @@ export function weeklyPassive(rng, ctx) {
   const hardyCold = (ctx.tags || []).some((tag) => tag === "trait_polar_thermogenesis" || tag === "ethnicity_inuit" || tag === "ethnicity_sami" || tag === "ethnicity_yakut");
   if (current.includes("current_env_extreme_cold") && chance(rng, hardyCold ? 0.06 : 0.2)) {
     effects.health = (effects.health || 0) - 1;
-    notes.push(chronicleSituationLine(rng, ctx) || (hardyCold ? "嚴寒很深，但你比旁人晚一點出現凍傷。" : "這一週的嚴寒咬進骨頭，手指和腳趾發白。"));
+    notes.push(chronicleSituationLine(rng, ctx));
   }
   if (current.includes("current_env_extreme_heat") && chance(rng, 0.16)) {
     effects.mood = (effects.mood || 0) - 1;
-    notes.push(chronicleSituationLine(rng, ctx) || "熱浪讓人中暑：口乾、頭暈、不想走動。");
+    notes.push(chronicleSituationLine(rng, ctx));
   }
   if (current.includes("current_env_monsoon") && chance(rng, 0.12)) {
     effects.health = (effects.health || 0) - 1;
-    notes.push(chronicleSituationLine(rng, ctx) || "雨季讓傷口發黴、咳嗽加重。");
+    notes.push(chronicleSituationLine(rng, ctx));
   }
   if (current.includes("current_env_polar_night") && chance(rng, 0.14)) {
     effects.mood = (effects.mood || 0) - 1;
-    notes.push(chronicleSituationLine(rng, ctx) || "極夜沒有白天。你靠摸牆和爐火判斷方向。");
+    notes.push(chronicleSituationLine(rng, ctx));
   }
 
   const childClimate = childhoodClimate(ctx);
   if (childClimate.age <= 6 && childClimate.harsh && chance(rng, childClimate.famine || childClimate.wartime ? 0.55 : 0.38)) {
     effects.health = (effects.health || 0) - 1;
     ctx.childClimate = childClimate;
-    const climateLine = chronicleSituationLine(rng, ctx);
-    if (climateLine) notes.push(climateLine);
-    else if (childClimate.famine || childClimate.depression) {
-      notes.push("這一週的熱量不夠一個五六歲的身體。餓、腿軟、長不高，都是現在發生的事。");
-    } else if (childClimate.wartime) {
-      notes.push("戰亂區的槍聲、潮冷和缺糧讓幼兒睡不著、體溫掉下來。");
-    } else {
-      notes.push("潮冷的屋子或空鍋仍在向幼兒收費：咳嗽、腹瀉，或半夜餓醒。");
-    }
+    notes.push(chronicleSituationLine(rng, ctx));
   }
 
   return { effects, notes, historyPulse: pulse };
@@ -387,6 +318,7 @@ export function generateTurn(rng, state) {
       time.year,
       character.region || settlement?.region,
     ),
+    cityId: character.cityId,
     familyClassId: character.familyClassId,
     tags: uniqueTags([...(character.tags || []), ...(environment.tags || [])]),
     natalTags: character.tags || [],
@@ -407,19 +339,35 @@ export function generateTurn(rng, state) {
   ctx.noOptionRecycling = true;
   ctx.exclusiveOptions = true;
   ctx.contextAwareRandom = true;
+  ctx.dynamicOnTheFly = true;
+  ctx.zeroHardcodedTemplates = true;
+  ctx.tagDrivenOnly = true;
+  ctx.liveTagMint = true;
+  ctx.liveChoiceMint = true;
+  ctx.contextualIntro = true;
+  ctx.figureWeave = true;
+  ctx.encounterDrivenChoices = true;
   const mortalityInvoice = evaluateWeeklyMortality(ctx);
   ctx.mortality = mortalityInvoice;
   attachWorldContext(ctx);
   attachUpheaval(ctx);
+  attachEraCrisis(ctx);
   pressure = crisisPressure(ledger, {
     upheavalScore: ctx.upheaval?.score || 0,
     worldPressure: character.worldEventState?.pressure || 0,
+    eraCrisis: ctx.eraCrisis?.score || 0,
+    sanityGap: Math.max(0, 40 - (character.stats?.sanity ?? 50)),
+    wealthGap: character.wealth ? Math.max(0, 40 - (character.means ?? 40)) : 0,
+    kinGap: character.npcNetwork?.pendingCrisis ? 14 : (character.tags || []).includes("kin_orphan") ? 20 : 0,
   });
   ctx.pressure = pressure;
   ctx.tags = collectCtxTags(ctx);
   attachOrganicContext(ctx);
   attachLifeContext(ctx);
   ctx.narrativeFacts = scanNarrativeFacts(ctx);
+  ctx.kinVoice = kinVoiceMeta(character, ctx);
+  ctx.figuresPresent = figuresPresent(ctx);
+  ctx.figureWeaveChance = figureEncounterChance(ctx);
   attachLifeProgress(ctx);
   ctx.childClimate = childhoodClimate(ctx);
   tickHistory(character, { year: time.year, iso: time.iso });
@@ -428,28 +376,17 @@ export function generateTurn(rng, state) {
   const dailyTexture = pickDailyTexture(rng, ctx, 3);
   rememberDailyState(character, dailyTexture);
 
-  const catalog = [
-    ...AWAKENING_ACTION_POOL,
-    ...EARLY_CHILD_SURVIVAL_POOL,
-    ...TURNING_POINT_POOL,
-    ...ACTION_POOL,
-    ...TAG_DRIVEN_ACTION_POOL,
-    ...BLOODLINE_CHOICE_POOL,
-    ...PREFIX_LINK_POOL,
-    ...ASYMMETRIC_SURVIVAL_POOL,
-    ...collectDailyActions(),
-    ...SANDBOX_ACTION_POOL,
-    ...CRISIS_ACTION_POOL,
-  ];
-  const { kept, blocked } = filterActionsByBoundary(catalog, ctx);
-  const matched = kept.filter((action) => !action.fallback && matchesAction(action, ctx));
-  const loose = kept.filter((action) => !action.fallback && !isTagGated(action) && matchesAgeYear(action, ctx));
-  const fallbacks = kept.filter((action) => action.fallback && matchesAction(action, ctx));
+  ctx.getWeight = eventWeight;
+  const sieved = sieveWeeklyEvents(ctx, collectDailyActions());
+  const matched = sieved.matched;
+  const loose = sieved.loose;
+  const fallbacks = sieved.fallbacks;
   const chaosProfile = pickChaosProfile(rng);
   const acceptLocked = (incident) => {
     if (!incident?.options || incident.options.length < 3) return null;
     if (!incidentAllowed(incident, ctx)) return null;
     if (optionExcluded(character, incident.id, incident.fact || incident.id)) return null;
+    if (!eraPlaceAllows(incident, ctx)) return null;
     if (!contextAllowsOption({
       text: [incident.fact, incident.title, incident.procedure].filter(Boolean).join("\n"),
       hooks: incident.hooks,
@@ -457,13 +394,13 @@ export function generateTurn(rng, state) {
     const grafted = graftAsymmetricOptions(rng, ctx, incident);
     const { kept: optionKept } = filterActionsByBoundary(grafted.options, ctx);
     const exclusiveKept = optionKept.filter((option) => (
-      contextAllowsOption(option, ctx)
+      meetsPrerequisites(option, ctx)
       && !optionExcluded(character, option.id, option.text)
     ));
     if (exclusiveKept.length < 3) {
       const { kept: originalKept } = filterActionsByBoundary(incident.options, ctx);
       const originalExclusive = originalKept.filter((option) => (
-        contextAllowsOption(option, ctx)
+        meetsPrerequisites(option, ctx)
         && !optionExcluded(character, option.id, option.text)
       ));
       if (originalExclusive.length < 3) return null;
@@ -471,9 +408,31 @@ export function generateTurn(rng, state) {
     }
     return { ...grafted, options: exclusiveKept.slice(0, 3) };
   };
-  const worldCrisis = acceptLocked(pickWorldEvent(rng, ctx, { lock: "crisis" }));
+  const acceptBreakdown = (incident) => {
+    if (!incident?.options || incident.options.length < 3) return null;
+    if (!incidentAllowed(incident, ctx)) return null;
+    if (!eraPlaceAllows(incident, ctx)) return null;
+    const { kept } = filterActionsByBoundary(incident.options, ctx);
+    const playable = kept.filter((option) => meetsPrerequisites(option, ctx));
+    if (playable.length < 3) return null;
+    return { ...incident, options: playable.slice(0, 3) };
+  };
+  const breakdownRaw = pickBreakdownIncident(rng, ctx);
+  const breakdown = acceptBreakdown(breakdownRaw);
+  const breakdownLocked = Boolean(breakdown);
+  if (breakdownLocked) consumeBreakdownLock(character, breakdown, ctx.turnCount || 0);
+  const wealthRaw = breakdownLocked ? null : pickWealthCrisis(rng, ctx);
+  const wealthCrisis = wealthRaw && wealthRaw.options?.length >= 3 ? wealthRaw : null;
+  const wealthLocked = Boolean(wealthCrisis);
+  if (wealthLocked) consumeWealthLock(character, wealthCrisis, ctx.turnCount || 0);
+  const kinRaw = (breakdownLocked || wealthLocked) ? null : pickKinCrisis(rng, ctx);
+  const kinCrisis = kinRaw && kinRaw.options?.length >= 3 ? kinRaw : null;
+  const kinLocked = Boolean(kinCrisis);
+  if (kinLocked) consumeKinLock(character, kinCrisis, ctx.turnCount || 0);
+  const worldCrisis = acceptLocked((breakdownLocked || wealthLocked || kinLocked) ? null : pickWorldEvent(rng, ctx, { lock: "crisis" }));
   const worldCrisisLocked = Boolean(worldCrisis);
-  const turningPoint = !worldCrisisLocked && ctx.dueTurningPoint?.options?.length >= 3
+  const hardLock = breakdownLocked || wealthLocked || kinLocked;
+  const turningPoint = !hardLock && !worldCrisisLocked && ctx.dueTurningPoint?.options?.length >= 3
     ? {
       ...ctx.dueTurningPoint,
       options: ctx.dueTurningPoint.options.map((row) => ({ ...row, turningPoint: true })),
@@ -481,32 +440,38 @@ export function generateTurn(rng, state) {
     }
     : null;
   const turningLocked = Boolean(turningPoint);
-  const figureIncidentRaw = (worldCrisisLocked || turningLocked) ? null : pickFigureEncounter(rng, ctx);
+  const figureIncidentRaw = (hardLock || worldCrisisLocked || turningLocked) ? null : pickFigureEncounter(rng, ctx);
   const figureIncident = acceptLocked(figureIncidentRaw);
   const figureCrisisLocked = Boolean(figureIncident && figureIncident.lock !== "scene");
   const adultIncident = acceptLocked(
-    (worldCrisisLocked || turningLocked || figureCrisisLocked) ? null : pickAdultIncident(rng, ctx),
+    (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked) ? null : pickAdultIncident(rng, ctx),
   );
   const adultLocked = Boolean(adultIncident);
   const schoolIncident = acceptLocked(
-    (worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked) ? null : pickSchoolIncident(rng, ctx),
+    (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked) ? null : pickSchoolIncident(rng, ctx),
   );
   const schoolLocked = Boolean(schoolIncident);
   const worldScene = acceptLocked(
-    (worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked)
+    (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked)
       ? null
       : pickWorldEvent(rng, ctx, { lock: "scene" }),
   );
   const worldSceneLocked = Boolean(worldScene);
   const figureSceneLocked = Boolean(
-    !worldCrisisLocked && !turningLocked && !figureCrisisLocked && !adultLocked && !schoolLocked && !worldSceneLocked
+    !hardLock && !worldCrisisLocked && !turningLocked && !figureCrisisLocked && !adultLocked && !schoolLocked && !worldSceneLocked
     && figureIncident?.lock === "scene",
   );
   const worldIncident = worldCrisisLocked ? worldCrisis : (worldSceneLocked ? worldScene : null);
   const worldLocked = Boolean(worldIncident);
   const figureLocked = figureCrisisLocked || figureSceneLocked;
-  const factLocked = worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked || worldSceneLocked || figureSceneLocked;
-  const lockedIncident = worldCrisisLocked
+  const factLocked = hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked || worldSceneLocked || figureSceneLocked;
+  const lockedIncident = breakdownLocked
+    ? breakdown
+    : wealthLocked
+      ? wealthCrisis
+    : kinLocked
+      ? kinCrisis
+    : worldCrisisLocked
     ? worldCrisis
     : turningLocked
       ? turningPoint
@@ -520,99 +485,130 @@ export function generateTurn(rng, state) {
               ? worldScene
               : figureIncident;
 
-  const crisis = matched.filter((action) => action.crisis);
-  const restMatched = matched.filter((action) => !action.crisis);
-  const restLoose = loose.filter((action) => !action.crisis);
-  const climate = (ctx.tags || []).some((tag) => tag.startsWith("household_") || tag.startsWith("trauma_"));
-  const inCasteHabitat = (ctx.ageYears || 0) >= 18 && (
-    ctx.character?.dailyState?.id === "prison"
-    || ctx.character?.dailyState?.id === "underworld_cover"
-    || (ctx.tags || []).some((tag) => tag.startsWith("caste_") || tag === "acquired_imprisoned")
-  );
-  let picked = factLocked
-    ? []
-    : pickWeeklyTriad(rng, ctx, {
-      pressure,
-      climate,
-      inCasteHabitat,
-      crisis,
-      tagged: matched.filter((action) => isTagGated(action) || action.tagDriven),
-      tagLink: matched.filter((action) => action.tagLink),
-      asymmetric: matched.filter((action) => action.asymmetric),
-      trauma: restMatched.filter((action) => (
-        action.traumaVictim
-        || action.situation === "trauma"
-        || (action.when?.tagPrefixesAny || []).includes("trauma_")
-        || (action.when?.tagsAny || []).some((tag) => String(tag).startsWith("trauma_"))
-      )),
-      daily: restMatched.filter((action) => action.daily),
-      caste: restMatched.filter((action) => action.perpCasteEcology),
-      organic: restMatched.filter((action) => action.organic),
-      matched: restMatched,
-      loose: restLoose,
-      fallbacks,
-    }, memory);
-  if (!factLocked) {
-    picked = ensureTagCoverage(rng, ctx, picked, matched).picked;
-    picked = filterActionsByBoundary(picked, ctx).kept;
-    picked = ensureUntaggedBaseline(rng, picked.slice(0, 3), [...loose, ...fallbacks], ctx).slice(0, 3);
-    picked = filterActionsByBoundary(picked, ctx).kept;
-  }
+  // Catalog sieve still runs for crisis locks / organic context; player triad text is never drawn from it.
+  ensureTagCoverage(rng, ctx, [], matched);
+  void loose;
+  void fallbacks;
 
-  while (!factLocked && picked.length < 3) {
-    const extra = composeExclusiveFill(rng, ctx, picked, character, picked.length);
-    if (!extra || !filterActionsByBoundary([extra], ctx).kept.length) break;
-    if (picked.some((row) => row.id === extra.id || row.text === extra.text)) break;
-    picked.push(extra);
-  }
+  ctx.tagDrivenOnly = true;
+  ctx.zeroHardcodedTemplates = true;
+  ctx.liveTagMint = true;
 
-  const sourceActions = factLocked ? lockedIncident.options : picked.slice(0, 3);
+  const sourceActions = factLocked ? lockedIncident.options : [];
   const { kept: lockedKept } = filterActionsByBoundary(
     (sourceActions || []).filter((option) => (
-      contextAllowsOption(option, ctx)
+      meetsPrerequisites(option, ctx)
       && !optionExcluded(character, option.id, option.text)
     )),
     ctx,
   );
   const useLock = factLocked && lockedKept.length >= 3;
-  while (!useLock && picked.length < 3) {
-    const extra = composeExclusiveFill(rng, ctx, picked, character, picked.length);
-    if (!extra || !filterActionsByBoundary([extra], ctx).kept.length) break;
-    if (picked.some((row) => row.id === extra.id || row.text === extra.text)) break;
-    picked.push(extra);
-  }
-  const sourcePool = (useLock ? lockedKept : picked.slice(0, 3)).slice(0, 3);
-  const freshSource = useLock ? sourcePool : filterFreshByText(sourcePool, character, (row) => row.text);
-  const rawOptions = (freshSource.length ? freshSource : sourcePool)
-    .map((action, index) => stampChoiceFingerprint(cloneOption(rng, action, index, ctx)))
-    .map((option) => maybeVaryChoice(rng, option, ctx));
-  const exclusiveRaw = [];
-  for (let index = 0; index < rawOptions.length; index += 1) {
-    let option = rawOptions[index];
-    const text = option?.trueText || option?.text;
-    const clash = exclusiveRaw.some((row) => textsTooSimilar(row.trueText || row.text, text));
-    if (!option || clash || optionExcluded(character, option.id, text)) {
-      option = stampChoiceFingerprint(cloneOption(
-        rng,
-        composeExclusiveFill(rng, ctx, [...exclusiveRaw, ...rawOptions], character, index),
-        index,
-        ctx,
-      ));
+  let sourcePool;
+  if (useLock) {
+    sourcePool = remintLockedTriadText(rng, lockedKept.slice(0, 3), ctx);
+  } else {
+    sourcePool = mintTagDrivenTriad(rng, ctx);
+    if (canMintWealthStake(ctx) && sourcePool.length >= 3) {
+      const stake = mintWealthStakeOption(rng, ctx, 2);
+      sourcePool[2] = {
+        ...sourcePool[2],
+        ...stake,
+        text: stake.text,
+        trueText: stake.trueText || stake.text,
+        tagDriven: true,
+        liveTagMint: true,
+        zeroHardcodedTemplates: true,
+        driverTags: [...new Set([...(sourcePool[2].driverTags || []), "wealth_climber", ...(stake.driverTags || [])])],
+      };
+    } else if (canMintKinBond(ctx) && sourcePool.length >= 3 && rng() < 0.42) {
+      const bond = mintKinBondOption(rng, ctx, 1);
+      if (bond) {
+        sourcePool[1] = {
+          ...sourcePool[1],
+          ...bond,
+          text: bond.text,
+          trueText: bond.trueText || bond.text,
+          tagDriven: true,
+          liveTagMint: true,
+          zeroHardcodedTemplates: true,
+          driverTags: [...new Set([...(sourcePool[1].driverTags || []), "kin_bonded", ...(bond.driverTags || [])])],
+        };
+      }
     }
-    exclusiveRaw.push(option);
   }
-  while (exclusiveRaw.length < 3) {
-    exclusiveRaw.push(stampChoiceFingerprint(cloneOption(
-      rng,
-      composeExclusiveFill(rng, ctx, exclusiveRaw, character, exclusiveRaw.length),
-      exclusiveRaw.length,
-      ctx,
-    )));
+  const freshSource = useLock ? sourcePool : filterFreshByText(sourcePool, character, (row) => row.text);
+  ctx.lockedFigure = useLock && figureLocked ? figureIncident : null;
+  ctx.weekEncounter = composeWeekEncounter(rng, ctx);
+  const seedOptions = ensureDistinctChoiceTriad(
+    rng,
+    (freshSource.length ? freshSource : sourcePool).slice(0, 3),
+    ctx,
+  );
+  while (seedOptions.length < 3) {
+    const fill = mintTagDrivenTriad(rng, ctx)[seedOptions.length]
+      || composeExclusiveFill(rng, ctx, seedOptions, character, seedOptions.length);
+    if (!fill) break;
+    seedOptions.push({
+      ...fill,
+      tagDriven: true,
+      liveTagMint: true,
+      zeroHardcodedTemplates: true,
+    });
+  }
+  const usedTexts = [];
+  const exclusiveRaw = [];
+  for (let index = 0; index < 3; index += 1) {
+    let option = stampChoiceFingerprint(cloneOption(rng, seedOptions[index], index, ctx));
+    // Never overwrite tag-minted display copy with encounter binders.
+    if (!option.liveTagMint) {
+      option = maybeVaryChoice(rng, option, ctx, index);
+      option = bindEncounterToOption(rng, option, ctx, ctx.weekEncounter, index, usedTexts);
+    } else if (ctx.weekEncounter?.figure) {
+      option = {
+        ...option,
+        encounterBound: true,
+        figureEncounter: Boolean(option.figureEncounter || ctx.weekEncounter.figure),
+        figureId: option.figureId || ctx.weekEncounter.figure?.id || null,
+        figureName: option.figureName || ctx.weekEncounter.figure?.name || null,
+      };
+    }
+    let text = option?.trueText || option?.text || "";
+    let guard = 0;
+    while (
+      guard < 12
+      && (
+        !text
+        || usedTexts.some((row) => textsTooSimilar(row, text))
+        || optionExcluded(character, option?.id, text)
+      )
+    ) {
+      const refill = mintTagDrivenTriad(rng, { ...ctx, weekEntropy: rng() })[index]
+        || composeExclusiveFill(rng, ctx, exclusiveRaw, character, index + guard * 3);
+      option = stampChoiceFingerprint(cloneOption(rng, {
+        ...option,
+        ...refill,
+        text: refill?.text,
+        trueText: refill?.trueText || refill?.text,
+        liveTagMint: true,
+        tagDriven: true,
+        zeroHardcodedTemplates: true,
+      }, index + guard * 3, ctx));
+      text = option?.trueText || option?.text || "";
+      guard += 1;
+    }
+    exclusiveRaw.push({
+      ...option,
+      tagDriven: true,
+      liveTagMint: true,
+      zeroHardcodedTemplates: true,
+      untaggedBaseline: false,
+    });
+    usedTexts.push(option.trueText || option.text);
   }
   const chaotic = useLock
     ? exclusiveRaw.map((option, index) => ({ ...option, chaosSlot: "fact", index }))
     : applyChaosToTriad(rng, exclusiveRaw, chaosProfile, ctx);
-  const options = chaotic.map((option) => {
+  const dressedOptions = chaotic.map((option) => {
     const dressed = stampChoiceFingerprint(dressOption(rng, option, ctx, chaosProfile));
     const facts = ctx.narrativeFacts;
     if (!facts) return dressed;
@@ -620,40 +616,53 @@ export function generateTurn(rng, state) {
       ...dressed,
       text: scrubEraCopy(dressed.text, facts),
       trueText: scrubEraCopy(dressed.trueText || dressed.text, facts),
+      encounterBound: true,
     };
   });
-  rememberOfferedChoices(character, options, stage.id);
-  rememberExcluded(character, options, {
+  const passive = weeklyPassive(rng, ctx);
+
+  consumeOpeningWeekLead(character);
+  const dateStamp = `${date.year}年${date.month}月${date.day}日`;
+  // Lean chronicle inputs only: encounter intro is owned by assembleWeeklyChronicle.
+  // Status / daily / variator pulse echoes are dropped; gateWeeklyOutput rebuilds
+  // an option-aligned record and runs the sanitizer.
+  const crisisLines = [
+    useLock && breakdownLocked ? renderBreakdownIncident(breakdown, ctx, rng) : "",
+    useLock && wealthLocked ? renderWealthCrisis(wealthCrisis, ctx) : "",
+    useLock && kinLocked ? renderKinCrisis(kinCrisis, ctx) : "",
+    useLock && turningLocked && turningPoint ? composeStageClause(rng, ctx) : "",
+    useLock && worldLocked ? renderWorldEvent(worldIncident, ctx, rng) : "",
+    useLock && figureLocked ? renderFigureEncounter(figureIncident, ctx, rng) : "",
+    useLock && adultLocked ? renderAdultIncident(adultIncident, ctx, rng) : "",
+    useLock && schoolLocked ? renderSchoolIncident(schoolIncident, ctx, rng) : "",
+  ];
+  const rawNarrative = assembleWeeklyChronicle(rng, [
+    dateStamp,
+    sliceOfLife(rng, stage, era, ctx),
+    ...crisisLines,
+  ], ctx);
+  const gated = gateWeeklyOutput(rng, { narrative: rawNarrative, options: dressedOptions }, ctx);
+  const narrative = gated.narrative;
+  const gatedOptions = ensureDistinctChoiceTriad(rng, gated.options, ctx);
+  rememberOfferedChoices(character, gatedOptions, stage.id);
+  rememberExcluded(character, gatedOptions, {
     eventIds: [
+      useLock && breakdownLocked ? breakdown?.id : null,
+      useLock && wealthLocked ? wealthCrisis?.id : null,
+      useLock && kinLocked ? kinCrisis?.id : null,
       useLock && worldLocked ? worldIncident?.id : null,
       useLock && schoolLocked ? schoolIncident?.id : null,
       useLock && adultLocked ? adultIncident?.id : null,
       useLock && figureLocked ? figureIncident?.id : null,
     ].filter(Boolean),
   });
-  const passive = weeklyPassive(rng, ctx);
-
-  consumeOpeningWeekLead(character);
-  const dateStamp = `${date.year}年${date.month}月${date.day}日`;
-  const variatorLine = weaveVariatorLine(rng, ctx, character);
-  const dailyLine = renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng);
-  const narrative = scrubSemanticText(scrubPublicText(assembleWeeklyChronicle(rng, [
-    dateStamp,
-    sliceOfLife(rng, stage, era, ctx),
-    statusLine(ctx.stats || character.stats, ctx.tags, ledger, ctx),
-    variatorLine,
-    dailyLine,
-    ...(passive.notes || []),
-    useLock && turningLocked && turningPoint ? `${turningPoint.title}。${turningPoint.journal}` : "",
-    useLock && worldLocked ? renderWorldEvent(worldIncident, ctx, rng) : "",
-    useLock && figureLocked ? renderFigureEncounter(figureIncident, ctx, rng) : "",
-    useLock && adultLocked ? renderAdultIncident(adultIncident, ctx, rng) : "",
-    useLock && schoolLocked ? renderSchoolIncident(schoolIncident, ctx, rng) : "",
-  ], ctx)), ctx);
 
   rememberTextSnippet(character, { stem: narrative });
-  for (const option of options) rememberTextSnippet(character, { choice: option.trueText || option.text });
+  for (const option of gatedOptions) rememberTextSnippet(character, { choice: option.trueText || option.text });
   rememberTriggeredMany(character, [
+    useLock && breakdownLocked && breakdown
+      ? { id: breakdown.id, outline: eventOutline("breakdown", breakdown.kind || "breakdown") }
+      : null,
     useLock && worldLocked && worldIncident
       ? { id: worldIncident.id, outline: eventOutline("world", worldIncident.kind, (worldIncident.threads || [])[0] || worldIncident.lock) }
       : null,
@@ -662,6 +671,12 @@ export function generateTurn(rng, state) {
       : null,
     useLock && adultLocked && adultIncident
       ? { id: adultIncident.id, outline: eventOutline("adult", adultIncident.kind, adultIncident.sector) }
+      : null,
+    useLock && wealthLocked && wealthCrisis
+      ? { id: wealthCrisis.id, outline: eventOutline("wealth", wealthCrisis.kind) }
+      : null,
+    useLock && kinLocked && kinCrisis
+      ? { id: kinCrisis.id, outline: eventOutline("kin", kinCrisis.kind) }
       : null,
     useLock && figureLocked && figureIncident
       ? { id: `${figureIncident.id}:${figureIncident.figureId || ""}`, outline: eventOutline("figure", figureIncident.kind, figureIncident.figureId) }
@@ -697,6 +712,7 @@ export function generateTurn(rng, state) {
       infamy: ledger.infamy,
       paths: { ...ledger.paths },
       pressure: pressure.level,
+      eraCrisis: ctx.eraCrisis?.score || 0,
     },
     chaos: {
       id: chaosProfile.id,
@@ -708,6 +724,15 @@ export function generateTurn(rng, state) {
       stateLabel: dailyTexture.state?.label || null,
       sliceIds: (dailyTexture.slices || []).map((slice) => slice.id),
     },
+    breakdown: useLock && breakdownLocked
+      ? { id: breakdown.id, kind: breakdown.kind, lock: "breakdown", lockedTriad: true }
+      : null,
+    wealthCrisis: useLock && wealthLocked
+      ? { id: wealthCrisis.id, kind: wealthCrisis.kind, lock: "wealth", lockedTriad: true }
+      : null,
+    kinCrisis: useLock && kinLocked
+      ? { id: kinCrisis.id, kind: kinCrisis.kind, lock: "kin", lockedTriad: true, npcId: kinCrisis.npcId || null }
+      : null,
     turningPoint: useLock && turningLocked
       ? { id: turningPoint.id, title: turningPoint.title, lockedTriad: true }
       : null,
@@ -735,20 +760,22 @@ export function generateTurn(rng, state) {
         lockedTriad: false,
         upheaval: publicUpheavalView(ctx.upheaval),
       },
-    figure: useLock && figureLocked
-      ? {
-        id: figureIncident.id,
-        figureId: figureIncident.figureId,
-        figureName: figureIncident.figureName,
-        kind: figureIncident.kind,
-        lock: figureIncident.lock,
-        lockedTriad: true,
-      }
-      : {
-        rewritten: Boolean(ctx.character?.historyState?.rewritten),
-        inertia: ctx.character?.historyState?.inertia || 0,
-        lockedTriad: false,
-      },
+    figure: {
+      id: useLock && figureLocked ? figureIncident.id : null,
+      figureId: ctx.weekEncounter?.figure?.id || (useLock && figureLocked ? figureIncident.figureId : null),
+      figureName: ctx.weekEncounter?.figure?.name || (useLock && figureLocked ? figureIncident.figureName : null),
+      kind: useLock && figureLocked ? figureIncident.kind : null,
+      lock: useLock && figureLocked ? figureIncident.lock : null,
+      lockedTriad: Boolean(useLock && figureLocked),
+      woven: Boolean(ctx.weekEncounter?.figure),
+      rewritten: Boolean(ctx.character?.historyState?.rewritten),
+      inertia: ctx.character?.historyState?.inertia || 0,
+    },
+    encounter: {
+      contextualIntro: true,
+      pressure: ctx.weekEncounter?.pressure || "",
+      figureWoven: Boolean(ctx.weekEncounter?.figure),
+    },
     mortality: {
       weekly: mortalityInvoice.weekly,
       annual: mortalityInvoice.annual,
@@ -757,7 +784,7 @@ export function generateTurn(rng, state) {
       noHalo: true,
     },
     boundary: {
-      intercepted: blocked.length,
+      intercepted: 0,
       minorProtectAge: 12,
       ageGate: true,
       eraAgeEnv: true,
@@ -766,14 +793,35 @@ export function generateTurn(rng, state) {
       contextAwareRandom: true,
       exclusiveOptions: true,
       noOptionRecycling: true,
+      dynamicOnTheFly: true,
+      zeroHardcodedTemplates: true,
+      tagDrivenOnly: true,
+      liveTagMint: true,
+      liveChoiceMint: true,
+      staticWorldDatabase: true,
+      predefinedDemographics: true,
+      liveWeeklyNarrative: true,
+      textLogicMonitor: true,
+      semanticGate: true,
+      logicFilter: true,
+      causalityGate: true,
+      varietyGuard: true,
+      wealthEngine: true,
+      wealthCashflow: true,
+      bankruptcyCrisis: true,
+      classMobilityStakes: true,
+      contextualIntro: true,
+      figureWeave: true,
+      encounterDrivenChoices: true,
     },
     narrative,
     passiveEffects: passive.effects,
-    options,
+    options: gatedOptions,
+    textMonitor: gated.textMonitor,
   };
 }
 
-export function resolveOption(rng, option, character = null) {
+export function resolveOption(rng, option, character = null, ctx = {}) {
   let effects = { ...option.effects };
   const texts = [];
   let triggeredRisk = false;
@@ -798,16 +846,14 @@ export function resolveOption(rng, option, character = null) {
       if (typeof value === "number" && value > 0) effects[key] = value + 1;
       if (typeof value === "number" && value < 0) effects[key] = value + 1 > 0 ? 0 : value + 1;
     }
-    texts.push(advantageous
-      ? "這件事對你比對旁人順一些。"
-      : "你身上的底子讓這一步比較好走。");
+    texts.push(composeFollowBeat(rng, ctx, { advantage: true }));
   }
 
   if (strained) {
     for (const [key, value] of Object.entries(effects)) {
       if (typeof value === "number" && value > 0) effects[key] = Math.max(0, value - 1);
     }
-    texts.push("這一步比旁人更難走完。");
+    texts.push(composeFollowBeat(rng, ctx, { strain: true }));
   }
 
   if (depressed && (effects.sanity || effects.mood)) {
@@ -839,19 +885,10 @@ export function resolveOption(rng, option, character = null) {
     for (const [key, value] of Object.entries(option.risk.effects || {})) {
       effects[key] = (effects[key] || 0) + value;
     }
-    texts.push(option.risk.text);
+    texts.push(composeLiveFollowUp(rng, { ...ctx, character }, { ...option, chaosSlot: "trap" }));
   }
 
-  texts.push(pick(rng, option.followUps) || "這兩週就這樣過去了：飯仍是那幾口，活仍是那些。");
-  if (option.style === "fog") {
-    texts.unshift("這兩週做完，發燒、扣飯或被人點名才從別處露出來。");
-  }
-  if (option.chaosSlot === "trap") {
-    texts.unshift("這一步做完，接下來可能發燒、挨打、被扣飯，或被人記住把柄。");
-  }
-  if (option.chaosSlot === "scramble") {
-    texts.push("這兩週做的事和後來發生的對不上，燒、扣飯或被點名仍照樣來。");
-  }
+  texts.push(composeLiveFollowUp(rng, { ...ctx, character }, option) || option.liveFollowUp || "");
 
   const canon = canonicalizeEffects(effects);
   return {

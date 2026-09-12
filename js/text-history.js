@@ -4,27 +4,17 @@
  * ~8 bi-weekly turns so the next draw cannot reuse the same canned line.
  */
 
+import { normalizeChoiceText, textsTooSimilar } from "./choice-similarity.js";
+
 export const TEXT_HISTORY_TURNS = 8;
 export const TEXT_HISTORY_CAP = 10;
 
 function normalizeStem(text) {
-  return String(text || "")
-    .replace(/〔[^〕]*〕/g, "")
-    .replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, "")
-    .slice(0, 40);
+  return normalizeChoiceText(text).slice(0, 40);
 }
 
 function tooSimilar(left, right) {
-  const a = normalizeStem(left);
-  const b = normalizeStem(right);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const shorter = a.length <= b.length ? a : b;
-  const longer = a.length <= b.length ? b : a;
-  if (shorter.length >= 8 && longer.includes(shorter)) return true;
-  let prefix = 0;
-  while (prefix < shorter.length && shorter[prefix] === longer[prefix]) prefix += 1;
-  return prefix >= 10;
+  return textsTooSimilar(left, right);
 }
 
 function pushUnique(list, value, cap) {

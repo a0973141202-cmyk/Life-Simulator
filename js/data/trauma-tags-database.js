@@ -108,6 +108,38 @@ export const TRAUMA_TAG_DATABASE = Object.freeze([
     strainIn: ["family", "social", "empathy", "health"],
     reason: "被對待的方式成為你後來對待世界的草稿。草稿不是原諒，是傳染。",
   },
+  {
+    id: "trauma_ptsd",
+    label: "驚悸未褪",
+    hooks: ["hide", "night", "survival"],
+    advantageIn: ["hide", "survival"],
+    strainIn: ["social", "study", "sleep", "family"],
+    reason: "同一聲響、同一氣味會把舊場面整段拉回來。身體比記憶先到。",
+  },
+  {
+    id: "trauma_melancholia",
+    label: "沉鬱難起",
+    hooks: ["wait", "night"],
+    advantageIn: [],
+    strainIn: ["labor", "study", "social", "health", "mood"],
+    reason: "起床、開口、把碗端到嘴邊都變成要先談判的事。這不是懶。",
+  },
+  {
+    id: "trauma_persecution",
+    label: "總覺得有人在抓",
+    hooks: ["hide", "official", "night"],
+    advantageIn: ["hide"],
+    strainIn: ["social", "official", "ask", "trust"],
+    reason: "門縫、名單、隔壁的咳嗽都被讀成針對你。有時是真的，有時不是。代價一樣收。",
+  },
+  {
+    id: "trauma_persona_crack",
+    label: "性子被擰歪了",
+    hooks: ["crime", "street", "family"],
+    advantageIn: ["crime", "survival"],
+    strainIn: ["family", "social", "empathy", "official"],
+    reason: "為了活過那一週，你把對人的方式改寫了。改寫不會在危機結束後自動還原。",
+  },
 ]);
 
 export const TRAUMA_TAG_INDEX = Object.freeze(

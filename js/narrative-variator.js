@@ -3,7 +3,8 @@
  * from the four-pillar fact sheet — not filled from sentence frames.
  */
 import { VARIATOR_KINDS } from "./data/variator-lexicon.js";
-import { composeChoiceLine, composePeriodChronicle, composeSituationLine, scrubEraCopy } from "./dynamic-prose.js";
+import { composeChoiceLine, composeHistoryPulse, composePeriodChronicle, composeSituationLine, scrubEraCopy } from "./dynamic-prose.js";
+import { composeEncounterChoice } from "./week-encounter.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
 import { optionExcluded } from "./exclusion-buffer.js";
 
@@ -50,17 +51,26 @@ export function inferVariatorKind(ctx = {}) {
   return "labor";
 }
 
-export function kindFromAction(action = {}) {
+export function kindFromAction(action = {}, ctx = {}) {
   const sit = action.situation || action.childTheme || "";
   if (VARIATOR_KINDS.includes(sit)) return sit;
   const hooks = action.hooks || action.when?.hooksAny || [];
   if (hooks.includes("hunger") || hooks.includes("scarcity")) return "hunger";
-  if (hooks.includes("health") || sit === "illness") return "illness";
-  if (hooks.includes("family") || sit === "confinement") return "family";
-  if (hooks.includes("labor")) return "labor";
+  if (hooks.includes("health") || sit === "illness" || action.breakdownIncident) return "illness";
+  if (hooks.includes("family") || sit === "confinement" || action.schoolIncident) return "family";
+  if (hooks.includes("labor") || action.adultIncident) {
+    return action.adultKind === "commerce" ? "money" : "labor";
+  }
   if (hooks.includes("play") || sit === "play") return "play";
   if (hooks.includes("trade") || sit === "money") return "money";
-  return "";
+  if (action.worldEvent) {
+    const threads = action.threads || ctx.upheaval?.threads || [];
+    if (threads.includes("famine") || threads.includes("unemployment")) return "hunger";
+    if (threads.includes("war") || threads.includes("conscription")) return "family";
+    return "labor";
+  }
+  if (action.figureEncounter) return "family";
+  return inferVariatorKind(ctx);
 }
 
 export function varyGenericNarrative(rng, kind, ctx = {}, character = null) {
@@ -74,20 +84,38 @@ export function varyGenericNarrative(rng, kind, ctx = {}, character = null) {
   return text;
 }
 
-export function varyGenericChoice(rng, action, ctx = {}) {
-  if (!action || action.worldEvent || action.schoolIncident || action.adultIncident || action.figureEncounter) {
-    return action;
-  }
-  const kind = kindFromAction(action);
-  if (!kind) return action;
+function lockedLaneOf(action = {}) {
+  if (action.schoolIncident) return "school";
+  if (action.worldEvent) return "world";
+  if (action.adultIncident) return "adult";
+  if (action.figureEncounter) return "figure";
+  if (action.breakdownIncident) return "breakdown";
+  return "";
+}
+
+export function varyGenericChoice(rng, action, ctx = {}, index = 0) {
+  const kind = kindFromAction(action, ctx) || inferVariatorKind(ctx);
   const who = ctx.character;
-  const salt = String(action.id || action.text || kind).length;
-  const picked = composeChoiceLine(rng, ctx, kind, salt);
-  if (!picked) return action;
-  if (who && (textOnCooldown(who, picked) || optionExcluded(who, action.id, picked))) {
-    return action;
+  const dirs = [action.direction, "endure", "seek", "guard", "resist", "flee", "help"].filter(Boolean);
+  const extra = { lockedLane: lockedLaneOf(action) };
+  let picked = "";
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    extra.direction = dirs[attempt % dirs.length];
+    const salt = Number(index || 0) + attempt * 5 + String(action.id || kind).length;
+    picked = ctx.weekEncounter
+      ? composeEncounterChoice(rng, ctx, ctx.weekEncounter, salt)
+      : composeChoiceLine(rng, ctx, kind, salt, extra);
+    if (!picked) continue;
+    if (who && (textOnCooldown(who, picked) || optionExcluded(who, action.id, picked))) continue;
+    break;
   }
-  rememberTextSnippet(who, { choice: picked, template: `choice:${kind}` });
+  if (!picked) {
+    picked = composeChoiceLine(rng, ctx, kind, Number(index || 0) + 11, {
+      ...extra,
+      direction: "endure",
+    });
+  }
+  if (who && picked) rememberTextSnippet(who, { choice: picked, template: `choice:${kind}` });
   return {
     ...action,
     text: picked,
@@ -96,17 +124,16 @@ export function varyGenericChoice(rng, action, ctx = {}) {
 }
 
 export function weaveVariatorLine(rng, ctx, character = null) {
-  return composeSituationLine(rng, { ...ctx, character: character || ctx.character });
+  return composeHistoryPulse(rng, ctx.worldContext || ctx.historyPulse, {
+    ...ctx,
+    character: character || ctx.character,
+  });
 }
 
-const KEEP_SPECIFIC = /行賄|巡警|開槍|告密|逃兵|當舖|匯款|炸藥|叛國/;
-
-export function maybeVaryChoice(rng, action, ctx = {}) {
-  if (!action?.text) return action;
-  const who = ctx.character;
+export function maybeVaryChoice(rng, action, ctx = {}, index = 0) {
+  if (!action) return action;
+  const next = varyGenericChoice(rng, action, ctx, index);
   const facts = ctx.narrativeFacts;
-  const keep = KEEP_SPECIFIC.test(action.text) && !textOnCooldown(who, action.text) && !optionExcluded(who, action.id, action.text);
-  const next = keep ? action : varyGenericChoice(rng, action, ctx);
   if (!facts || !next?.text) return next;
   const text = scrubEraCopy(next.text, facts);
   const trueText = scrubEraCopy(next.trueText || next.text, facts);

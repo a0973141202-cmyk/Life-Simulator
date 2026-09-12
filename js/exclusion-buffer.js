@@ -1,27 +1,35 @@
 /**
  * Turn-based exclusion for every option/event that appeared on screen.
- * Offered-but-unpicked stems cannot return for EXCLUSION_TURNS
- * bi-weekly turns (each turn is one fortnight).
+ * Offered stems stay out for EXCLUSION_TURNS fortnights.
+ * Unused (shown but not chosen) stems stay out for the rest of this life.
  */
 
+import { normalizeChoiceText, textsTooSimilar } from "./choice-similarity.js";
+
 export const EXCLUSION_TURNS = 8;
-export const EXCLUSION_CAP = 80;
+export const EXCLUSION_CAP = 120;
+export const NEVER_STEM_CAP = 160;
+export const NEVER_ID_CAP = 100;
 
 function stemOf(text) {
-  return String(text || "")
-    .replace(/〔[^〕]*〕/g, "")
-    .replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, "")
-    .slice(0, 40);
+  return normalizeChoiceText(text).slice(0, 40);
+}
+
+function bareId(id) {
+  return String(id || "").replace(/__\d+$/, "").replace(/^fog_/, "");
 }
 
 export function emptyExclusion() {
-  return { turn: 0, items: [] };
+  return { turn: 0, items: [], never: [], neverIds: [] };
 }
 
 export function ensureExclusionBuffer(character) {
   if (!character) return emptyExclusion();
   if (!character.exclusionBuffer) character.exclusionBuffer = emptyExclusion();
-  return character.exclusionBuffer;
+  const buf = character.exclusionBuffer;
+  if (!Array.isArray(buf.never)) buf.never = [];
+  if (!Array.isArray(buf.neverIds)) buf.neverIds = [];
+  return buf;
 }
 
 export function beginExclusionTurn(character) {
@@ -41,7 +49,7 @@ export function rememberExcluded(character, choices = [], extras = {}) {
   const turn = buf.turn || 1;
   const seen = new Set((buf.items || []).map((item) => `${item.id}|${item.stem}`));
   for (const choice of choices) {
-    const id = String(choice?.id || "").replace(/__\d+$/, "").replace(/^fog_/, "");
+    const id = bareId(choice?.id);
     const stem = stemOf(choice?.trueText || choice?.text);
     const template = extras.templates?.[choice?.id] || stemOf(choice?.text) || stem;
     const key = `${id}|${stem}`;
@@ -62,25 +70,33 @@ export function rememberExcluded(character, choices = [], extras = {}) {
   return buf;
 }
 
-function stemsTooSimilar(left, right) {
-  const a = stemOf(left);
-  const b = stemOf(right);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const shorter = a.length <= b.length ? a : b;
-  const longer = a.length <= b.length ? b : a;
-  if (shorter.length >= 6 && longer.includes(shorter)) return true;
-  let prefix = 0;
-  while (prefix < shorter.length && shorter[prefix] === longer[prefix]) prefix += 1;
-  return prefix >= 8;
+export function rememberUnpicked(character, options = [], chosenIndex = -1) {
+  if (!character) return emptyExclusion();
+  const buf = ensureExclusionBuffer(character);
+  (options || []).forEach((opt, index) => {
+    if (index === chosenIndex) return;
+    const stem = stemOf(opt?.trueText || opt?.text);
+    const id = bareId(opt?.id);
+    if (stem && !buf.never.some((row) => textsTooSimilar(row, stem))) {
+      buf.never.push(stem);
+    }
+    if (id && !buf.neverIds.includes(id)) buf.neverIds.push(id);
+  });
+  buf.never = buf.never.slice(-NEVER_STEM_CAP);
+  buf.neverIds = buf.neverIds.slice(-NEVER_ID_CAP);
+  character.exclusionBuffer = buf;
+  return buf;
 }
 
 export function optionExcluded(character, id, stem) {
-  const items = character?.exclusionBuffer?.items || [];
-  const bare = String(id || "").replace(/__\d+$/, "").replace(/^fog_/, "");
+  const buf = character?.exclusionBuffer || emptyExclusion();
+  const items = buf.items || [];
+  const bare = bareId(id);
   if (bare && items.some((item) => item.id === bare)) return true;
+  if (bare && (buf.neverIds || []).includes(bare)) return true;
   const norm = stem ? stemOf(stem) : "";
-  if (norm && items.some((item) => stemsTooSimilar(item.stem, norm) || stemsTooSimilar(item.template, norm))) {
+  if (norm && (buf.never || []).some((row) => textsTooSimilar(row, norm))) return true;
+  if (norm && items.some((item) => textsTooSimilar(item.stem, norm) || textsTooSimilar(item.template, norm))) {
     return true;
   }
   return false;

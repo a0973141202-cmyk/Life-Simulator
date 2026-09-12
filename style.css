@@ -42,19 +42,25 @@ textarea {
 body {
   font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
   color: var(--ink);
-  background:
-    radial-gradient(ellipse at 50% 0%, #3a2a1c 0%, var(--desk) 55%);
+  background: var(--desk);
   line-height: 1.55;
 }
 
 .desk {
   min-height: 100vh;
   padding: 1.25rem 1rem 2.5rem;
+  background: radial-gradient(ellipse at 50% 0%, #3a2a1c 0%, var(--desk) 55%);
 }
 
-.paper {
-  max-width: 1180px;
+.paper,
+#app {
+  max-width: min(1180px, 100%);
+  width: 100%;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  isolation: isolate;
   background-color: var(--paper);
   background-image:
     repeating-linear-gradient(
@@ -69,7 +75,8 @@ body {
   box-shadow:
     0 0 0 1px rgba(28, 20, 12, 0.35),
     0 18px 40px rgba(0, 0, 0, 0.45);
-  position: relative;
+  overflow: hidden;
+  transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .paper::before {
@@ -77,9 +84,17 @@ body {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 0;
   background:
     radial-gradient(circle at 8% 92%, rgba(40, 28, 12, 0.08), transparent 24%),
     radial-gradient(circle at 96% 70%, rgba(40, 28, 12, 0.06), transparent 20%);
+}
+
+.paper > .masthead,
+.paper > .layout,
+.paper > .colophon {
+  position: relative;
+  z-index: 1;
 }
 
 .masthead {
@@ -166,15 +181,23 @@ body {
   color: var(--ink);
 }
 
+/* —— Layout grid: left status / right chronicle+choices —— */
 .layout {
   display: grid;
-  grid-template-columns: minmax(280px, 34%) 1fr;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-rows: auto;
   align-items: stretch;
-  min-height: 0;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
 }
 
 .rail,
-#status-panel {
+#status-panel,
+.status-panel {
+  grid-column: 1;
+  min-width: 0;
+  max-width: none;
   border-right: 3px solid var(--rule);
   padding: 0.9rem 1rem 1.4rem;
   display: flex;
@@ -188,20 +211,37 @@ body {
       transparent 31px,
       rgba(18, 12, 7, 0.03) 32px
     );
-}
-
-#status-panel {
   box-shadow: inset -12px 0 18px rgba(22, 16, 11, 0.08);
 }
 
 .gazette,
-#event-panel {
-  display: flex;
-  flex-direction: column;
+#event-panel,
+.event-panel {
+  grid-column: 2;
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 0.9rem 1.2rem 1rem;
   background: rgba(255, 248, 230, 0.18);
+}
+
+.event-history {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  max-height: min(46vh, 28rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(43, 33, 22, 0.28);
+  border-bottom: 2px solid var(--rule);
+  box-shadow: inset 0 0 0 1px rgba(255, 248, 230, 0.35);
+  padding: 0.55rem 0.65rem 0.75rem;
+  margin: 0 0 0.45rem;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stamp-soft) rgba(28, 20, 12, 0.12);
+  background: rgba(255, 250, 235, 0.22);
 }
 
 .plate-title,
@@ -295,6 +335,10 @@ body {
 
 .meter[data-stat="sanity"] .meter-fill {
   background: #3d4a3a;
+}
+
+.meter[data-stat="means"] .meter-fill {
+  background: #5a4a2a;
 }
 
 .meter-value {
@@ -392,6 +436,35 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   background: rgba(255, 250, 235, 0.35);
   max-width: 100%;
   word-break: break-word;
+  cursor: help;
+}
+
+.tag:hover,
+.tag:focus-visible {
+  border-color: var(--ink-soft);
+  background: rgba(255, 250, 235, 0.7);
+  outline: none;
+}
+
+.tag-tooltip {
+  position: fixed;
+  z-index: 120;
+  max-width: min(20rem, calc(100vw - 1.25rem));
+  padding: 0.42rem 0.58rem;
+  font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  letter-spacing: 0.04em;
+  color: #e8dcc4;
+  background: #14110d;
+  border: 1px solid #6a5840;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  word-break: break-word;
+}
+
+.tag-tooltip[hidden] {
+  display: none;
 }
 
 .tag[data-cat="trauma"],
@@ -487,20 +560,6 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   text-align: right;
 }
 
-.event-history {
-  flex: 1 1 auto;
-  min-height: 16rem;
-  max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border-bottom: 2px solid var(--rule);
-  padding: 0.15rem 0.35rem 0.85rem 0;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: var(--stamp-soft) rgba(28, 20, 12, 0.12);
-}
-
 .event-history:focus-visible {
   outline: 1px solid var(--rule);
   outline-offset: 2px;
@@ -582,8 +641,10 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
 
 .choices-wrap {
   flex: 0 0 auto;
-  padding-top: 0.75rem;
+  padding: 0.75rem 0.15rem 0.15rem;
   margin-top: 0;
+  border-top: 1px dashed rgba(43, 33, 22, 0.35);
+  background: linear-gradient(180deg, rgba(255, 248, 230, 0.15), transparent 40%);
 }
 
 .choices {
@@ -658,12 +719,9 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   color: rgba(239, 226, 198, 0.75);
 }
 
-.choice.is-fog .choice-text::after,
-.choice-btn.is-fog .choice-text::after {
-  content: " · 代價未標";
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  color: var(--fade);
+.choice.is-fog .choice-text,
+.choice-btn.is-fog .choice-text {
+  opacity: 0.92;
 }
 
 .choice.is-butterfly,
@@ -695,7 +753,7 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   text-align: center;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .desk {
     padding: 0.6rem 0.45rem 1.5rem;
   }
@@ -714,20 +772,26 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
     grid-template-columns: 1fr;
   }
 
+  .rail,
+  #status-panel,
+  .status-panel {
+    grid-column: 1;
+    border-right: 0;
+    border-top: 3px solid var(--rule);
+    box-shadow: none;
+  }
+
   .gazette,
-  #event-panel {
-    order: -1;
+  #event-panel,
+  .event-panel {
+    grid-column: 1;
+    grid-row: 1;
     border-bottom: 3px solid var(--rule);
   }
 
-  .rail,
-  #status-panel {
-    border-right: 0;
-  }
-
   .event-history {
-    min-height: 12rem;
-    max-height: none;
+    min-height: 10rem;
+    max-height: min(34vh, 20rem);
   }
 
   .week-label {
@@ -764,13 +828,152 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   display: none;
 }
 
+.btn-hall {
+  font-family: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  align-self: center;
+}
+
+.btn-hall:hover,
+.btn-hall:focus-visible {
+  background: var(--ink);
+  color: var(--paper);
+  outline: none;
+}
+
 .death-resolution-sheet {
-  width: min(36rem, 100%);
-  background: #ead6ae;
+  width: min(40rem, 100%);
+  max-height: min(92vh, 52rem);
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(122, 18, 18, 0.06), transparent 3.2rem),
+    #ead6ae;
   border: 3px solid #3a0808;
   box-shadow: 0 0 0 1px #cbb892, 0 18px 48px rgba(0, 0, 0, 0.55);
   padding: 1.35rem 1.4rem 1.5rem;
   color: #120c07;
+}
+
+.memento-card {
+  margin: 0 0 1rem;
+  padding: 0.15rem 0 0.2rem;
+}
+
+.memento-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 1.4rem;
+}
+
+.memento-tags .tag {
+  font-size: 0.72rem;
+}
+
+.memento-tags-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #5c4a32;
+}
+
+.hall-of-fame {
+  margin: 0 0 1rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(58, 8, 8, 0.28);
+}
+
+.hall-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  color: #7a1212;
+}
+
+.hall-note {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  color: #5c4a32;
+}
+
+.hall-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  max-height: 11rem;
+  overflow: auto;
+}
+
+.hall-empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #5c4a32;
+}
+
+.hall-card {
+  display: grid;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: #120c07;
+  background: rgba(255, 248, 230, 0.55);
+  border: 1px solid rgba(58, 8, 8, 0.28);
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+}
+
+.hall-card[aria-current="true"] {
+  border-color: #7a1212;
+  box-shadow: inset 0 0 0 1px #7a1212;
+}
+
+.hall-card-name {
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+}
+
+.hall-card-meta {
+  font-size: 0.75rem;
+  color: #5c4a32;
+}
+
+.death-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.btn-hall-close {
+  display: block;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  color: #3a0808;
+  background: transparent;
+  border: 1px solid #3a0808;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+}
+
+.btn-hall-close:hover,
+.btn-hall-close:focus-visible {
+  background: #3a0808;
+  color: #ead6ae;
+  outline: 2px solid #ead6ae;
+  outline-offset: 2px;
+}
+
+.btn-hall-close[hidden],
+.btn-rebirth[hidden] {
+  display: none;
 }
 
 .death-kicker {
@@ -851,20 +1054,22 @@ body.has-death-panel .btn-file {
   visibility: hidden;
 }
 
-/* —— ThemeManager ornaments (stage / vocation / era / crisis) —— */
+/* —— Theme skins: CSS variables + ornaments ONLY. Never touch .layout geometry. —— */
 .theme-ornaments {
   pointer-events: none;
   position: absolute;
-  inset: 0.35rem;
-  z-index: 2;
+  inset: 0.45rem;
+  z-index: 0;
+  color: var(--rule);
+  opacity: 0.85;
 }
 
 .ornament {
   position: absolute;
-  width: 1.35rem;
-  height: 1.35rem;
-  border: 1px solid currentColor;
-  opacity: 0.35;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid currentColor;
+  opacity: 0.4;
 }
 
 .ornament-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
@@ -890,123 +1095,133 @@ body.has-death-panel .btn-file {
   color: var(--fade);
 }
 
-body[data-theme-stage="childhood"] {
-  --paper: #e7d3a8;
-  --paper-deep: #cbb888;
-  --folder: #b89a6a;
+/* Childhood — yellowed notebook */
+#app.stage-childhood,
+body.stage-childhood {
+  --paper: #e8d4a6;
+  --paper-deep: #cbb078;
+  --folder: #b89462;
   --stamp: #6a2a12;
   --rule: #3a2818;
+  --desk: #1a140c;
 }
 
-body[data-theme-stage="childhood"] .paper,
-#app[data-theme-stage="childhood"] {
-  border-width: 2px;
-  border-style: solid;
-  box-shadow: 0 0 0 1px rgba(40, 24, 12, 0.25), 0 12px 28px rgba(0, 0, 0, 0.35);
+#app.stage-childhood {
+  border: 3px double #8a6a3a;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 26px, rgba(90, 60, 20, 0.05) 27px),
+    linear-gradient(180deg, rgba(255, 244, 214, 0.5), transparent 22%);
 }
 
-body[data-theme-stage="childhood"] .masthead {
-  border-bottom-width: 2px;
-  border-bottom-style: solid;
-}
-
-body[data-theme-stage="academic"],
-body[data-theme-vocation="academic"] {
-  --paper: #e8dfc8;
-  --paper-deep: #cfc3a2;
+/* Student / academic — ruled paper */
+#app.stage-student,
+body.stage-student,
+#app.vocation-student,
+body.vocation-student {
+  --paper: #e6dfc6;
+  --paper-deep: #c8bda0;
   --ink: #14181e;
   --rule: #243044;
   --stamp: #1f3a5c;
+  --desk: #141820;
 }
 
-body[data-theme-stage="academic"] .paper,
-body[data-theme-vocation="academic"] .paper {
+#app.stage-student,
+#app.vocation-student {
+  border: 2px solid #7a8aa0;
   background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(30, 50, 80, 0.06) 24px),
-    linear-gradient(180deg, rgba(255, 255, 250, 0.4), transparent 20%);
-  border-color: #8a9aaf;
+    repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(30, 50, 80, 0.07) 24px),
+    linear-gradient(180deg, rgba(255, 255, 250, 0.35), transparent 20%);
 }
 
-body[data-theme-stage="urban"],
-body[data-theme-vocation="urban"] {
-  --paper: #ddd4c2;
-  --desk: #12151a;
-  --rule: #2a3038;
-  --stamp: #3a3a3a;
-}
-
-body[data-theme-stage="urban"] .paper,
-body[data-theme-vocation="urban"] .paper {
-  border-style: solid;
-  border-width: 1px;
-  box-shadow: 0 0 0 1px rgba(20, 24, 28, 0.45), 0 16px 36px rgba(0, 0, 0, 0.5);
-}
-
-body[data-theme-vocation="labor"],
-body[data-theme-vocation="rural"] {
+/* Worker / adult — sober dossier */
+#app.stage-worker,
+body.stage-worker,
+#app.vocation-worker,
+body.vocation-worker {
   --paper: #d8c49a;
   --paper-deep: #b89a68;
-  --desk: #1a140c;
+  --desk: #16110c;
   --stamp: #5a2e10;
   --rule: #3a2814;
 }
 
-body[data-theme-vocation="labor"] .paper,
-body[data-theme-vocation="rural"] .paper {
+#app.stage-worker,
+#app.vocation-worker {
+  border: 2px solid #6a5030;
   background-image:
-    repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(60, 40, 16, 0.04) 11px),
-    linear-gradient(180deg, rgba(255, 236, 200, 0.25), transparent 22%);
-  border-width: 3px;
-  border-style: solid;
+    repeating-linear-gradient(135deg, transparent, transparent 11px, rgba(60, 40, 16, 0.04) 12px),
+    linear-gradient(180deg, rgba(255, 236, 200, 0.22), transparent 22%);
 }
 
-body[data-theme-vocation="commerce"] {
+/* Elder — faded file */
+#app.stage-elder,
+body.stage-elder,
+#app.vocation-elder,
+body.vocation-elder {
+  --paper: #d2c4a6;
+  --paper-deep: #b0a080;
+  --fade: #6a5a48;
+  --desk: #18140e;
+}
+
+#app.stage-elder {
+  border-color: #9a8868;
+  box-shadow: 0 0 0 1px rgba(40, 32, 24, 0.25), 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Commerce */
+#app.vocation-commerce,
+body.vocation-commerce {
   --paper: #ead9b0;
   --stamp: #7a4a10;
   --folder: #c4a050;
 }
 
-body[data-theme-vocation="military"],
-body[data-theme-era="wartime"],
-body[data-theme-crisis="war"] {
+/* Military */
+#app.vocation-military,
+body.vocation-military {
   --paper: #cbb89a;
   --paper-deep: #8a7a5a;
-  --ink: #16120c;
   --desk: #0e0c09;
   --stamp: #4a1010;
   --rule: #2a1810;
-  --folder: #7a6848;
 }
 
-body[data-theme-vocation="military"] .paper,
-body[data-theme-era="wartime"] .paper,
-body[data-theme-crisis="war"] .paper {
+#app.vocation-military {
   border: 3px solid #3a2014;
   background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 6px, rgba(40, 20, 10, 0.05) 7px),
-    linear-gradient(180deg, rgba(40, 20, 10, 0.12), transparent 30%);
-  box-shadow: 0 0 0 2px #1a1008, 0 18px 40px rgba(0, 0, 0, 0.6);
+    repeating-linear-gradient(0deg, transparent, transparent 7px, rgba(40, 20, 10, 0.05) 8px),
+    linear-gradient(180deg, rgba(40, 20, 10, 0.1), transparent 28%);
+  box-shadow: 0 0 0 2px #1a1008, 0 18px 40px rgba(0, 0, 0, 0.55);
 }
 
-body[data-theme-vocation="military"] .masthead,
-body[data-theme-era="wartime"] .masthead,
-body[data-theme-crisis="war"] .masthead {
-  border-bottom: 6px solid var(--rule);
+#app.vocation-underworld,
+body.vocation-underworld {
+  --paper: #c4b090;
+  --desk: #0a0806;
+  --stamp: #4a0810;
 }
 
-body[data-theme-era="depression"] {
+/* Era tones */
+#app.era-depression,
+body.era-depression {
   --paper: #c8b48c;
   --paper-deep: #9a8860;
   --fade: #4a3a24;
   --stamp: #5a2010;
 }
 
-body[data-theme-era="depression"] .paper {
-  filter: saturate(0.82);
-  border-color: #8a7048;
+#app.era-wartime,
+body.era-wartime {
+  --paper: #c4ae8e;
+  --desk: #0e0c09;
+  --stamp: #4a1010;
+  --rule: #2a1810;
 }
 
-body[data-theme-era="coldwar"] {
+#app.era-coldwar,
+body.era-coldwar {
   --paper: #d5d0c4;
   --ink: #141820;
   --rule: #2a3040;
@@ -1014,73 +1229,77 @@ body[data-theme-era="coldwar"] {
   --desk: #101218;
 }
 
-body[data-theme-era="coldwar"] .paper {
-  border: 2px double #4a5060;
+#app.era-coldwar {
+  border-color: #5a6070;
 }
 
-body[data-theme-era="contemporary"] {
+#app.era-contemporary,
+body.era-contemporary {
   --paper: #e6e0d4;
   --desk: #1a1c20;
   --rule: #30343c;
   --stamp: #5a1218;
 }
 
-body[data-theme-stage="faded"],
-body[data-theme-vocation="faded"] {
-  --paper: #d4c6a8;
-  --ink-soft: #4a4034;
-  --fade: #6a5a48;
+/* Crisis overlay — keeps layout intact */
+#app.stage-crisis,
+body.stage-crisis,
+#app.theme-crisis,
+body.theme-crisis {
+  --stamp: #7a1212;
+  --crisis: #7a1212;
 }
 
-body[data-theme-stage="faded"] .paper,
-body[data-theme-vocation="faded"] .paper {
-  opacity: 0.98;
-  box-shadow: 0 0 0 1px rgba(40, 32, 24, 0.2), 0 10px 24px rgba(0, 0, 0, 0.3);
-}
-
-body[data-theme-crisis="crisis"] .paper {
+#app.stage-crisis {
   box-shadow: 0 0 0 2px var(--crisis), 0 18px 40px rgba(40, 0, 0, 0.45);
 }
 
-body[data-theme-crisis="watch"] .crisis-alert {
+#app.crisis-watch .crisis-alert,
+body.crisis-watch .crisis-alert {
   outline: 1px dashed var(--watch);
 }
 
-body[data-theme-ornament="childhood"] .ornament {
+/* Ornament variants */
+#app.ornament-childhood .ornament,
+body.ornament-childhood .ornament {
   width: 0.7rem;
   height: 0.7rem;
-  opacity: 0.25;
+  opacity: 0.28;
 }
 
-body[data-theme-ornament="academic"] .ornament {
+#app.ornament-student .ornament,
+body.ornament-student .ornament {
   border-width: 2px;
-  opacity: 0.4;
+  opacity: 0.42;
 }
 
-body[data-theme-ornament="military"],
-body[data-theme-ornament="wartime"] {
-  color: #3a1810;
-}
-
-body[data-theme-ornament="military"] .ornament,
-body[data-theme-ornament="wartime"] .ornament {
-  width: 1.6rem;
-  height: 1.6rem;
+#app.ornament-military .ornament,
+body.ornament-military .ornament {
+  width: 1.55rem;
+  height: 1.55rem;
   border-width: 3px;
   opacity: 0.55;
 }
 
-body[data-theme-ornament="depression"] .ornament-rule {
+#app.ornament-depression .ornament-rule,
+body.ornament-depression .ornament-rule {
   border-top-style: solid;
   opacity: 0.35;
 }
 
-body[data-theme-vocation="underworld"] {
-  --paper: #c4b090;
-  --desk: #0a0806;
-  --stamp: #4a0810;
+#app.ornament-worker .ornament,
+body.ornament-worker .ornament {
+  border-width: 2px;
+  opacity: 0.38;
 }
 
-.paper {
-  overflow: visible;
+#app.theme-ready .theme-ornaments,
+body.theme-ready .theme-ornaments {
+  opacity: 1;
+}
+
+#app.theme-crisis .masthead-kicker,
+body.theme-crisis .masthead-kicker {
+  color: var(--stamp);
+  letter-spacing: 0.28em;
 }

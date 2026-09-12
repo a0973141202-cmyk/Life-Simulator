@@ -26,14 +26,14 @@ const KIND_ZH = {
   metropolis: "大都會",
   city: "城市",
   port: "港口",
-  industrial: "工業聚落",
+  industrial: "工廠區",
   village: "農村",
   slum: "貧民窟",
-  arctic: "極地聚落",
-  underground: "地下聚落",
+  arctic: "極地",
+  underground: "地下街",
   warzone: "戰亂區",
-  camp: "難民／流離營區",
-  planned_capital: "規劃首都",
+  camp: "難民營",
+  planned_capital: "新都",
 };
 
 export { canonicalizeCountry };
@@ -76,7 +76,7 @@ export function formatBirthplace(settlement, year) {
     city,
     cityOfficial: cityRaw,
     kind: settlement.kind,
-    kindLabel: KIND_ZH[settlement.kind] || settlement.kind,
+    kindLabel: KIND_ZH[settlement.kind] || "聚居地",
     label,
     documented: true,
   };

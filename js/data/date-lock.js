@@ -29,10 +29,7 @@ export function settlementDateWindow(settlement, year) {
   maxDay = Math.min(maxDay, daysInMonth(year, maxMonth));
 
   if (dateOrdinal(year, minMonth, minDay) > dateOrdinal(year, maxMonth, maxDay)) {
-    minMonth = 1;
-    minDay = 1;
-    maxMonth = 12;
-    maxDay = daysInMonth(year, 12);
+    return { minMonth: 1, minDay: 2, maxMonth: 1, maxDay: 1 };
   }
 
   return { minMonth, minDay, maxMonth, maxDay };

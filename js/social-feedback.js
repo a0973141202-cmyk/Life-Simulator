@@ -186,8 +186,26 @@ export function socialStanding(source = {}) {
   };
 }
 
+function composeLiveSocial(facts, band, upheaval) {
+  const city = facts.city || "此地";
+  const year = facts.year || "";
+  const pulse = facts.upheavalLabel || upheaval?.label || "";
+  let line = `${year}年在${city}，還沒有人特別記得你`;
+  if (band === "feared") line = `${city}的人先把視線挪開，不想被認成跟你一夥`;
+  else if (band === "shunned") line = `${year}年在${city}排隊時，位子空著也不讓你站`;
+  else if (band === "cold") line = `${city}的招呼變短。找零放在桌上，不放進手心`;
+  else if (band === "trusted") line = `${city}還有人肯把名字和你放在同一張桌上`;
+  else if (band === "courted") line = `${city}的門開得比較快，靠近的人通常有自己的帳`;
+  if (pulse && (upheaval?.tier || 0) >= 1) return `${line}。時局是${pulse}`;
+  return line;
+}
+
 export function describeSocialFeedback(source = {}, options = {}) {
   const standing = socialStanding(source);
+  const facts = options.ctx?.narrativeFacts;
+  if (facts?.year && facts?.city) {
+    return composeLiveSocial(facts, standing.band, options.upheaval);
+  }
   const lines = FEEDBACK_LINES[standing.band] || FEEDBACK_LINES.ordinary;
   const salt = options.salt ?? standing.reputation + standing.notoriety * 3 + standing.socialCredit * 5;
   const base = pickLine(lines, salt);

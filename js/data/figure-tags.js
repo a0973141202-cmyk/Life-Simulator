@@ -53,11 +53,11 @@ export const FIGURE_TAG_DATABASE = Object.freeze([
   },
   {
     id: "figure_butterfly",
-    label: "蝴蝶效應操作者",
+    label: "年表被改過",
     hooks: ["historical", "politics", "crime"],
     advantageIn: ["historical"],
     strainIn: ["official", "survival", "trust"],
-    reason: "後續世界程序已偏離 canon。偏離會被所有後來的年份讀取。",
+    reason: "這條街之後的說法開始跟以前不一樣。",
   },
   {
     id: "figure_failed_hand",

@@ -113,12 +113,22 @@ export function scanNarrativeFacts(ctx = {}) {
     character.region || settlement?.region || ctx.region,
   );
   const health = Number(ctx.stats?.health ?? character.stats?.health ?? 50);
+  const sanity = Number(ctx.stats?.sanity ?? character.stats?.sanity ?? 50);
   const tags = life.tags || ctx.tags || character.tags || [];
   const hist = historyNouns(ctx, year, character.region || settlement?.region || ctx.region);
   const ancestry = ancestryLabels(character);
   const parents = character.bloodline?.parents || {};
   const hasFatherRecord = Boolean(parents.father);
   const hasMotherRecord = Boolean(parents.mother);
+  const network = character.npcNetwork?.npcs || [];
+  const fatherNpc = network.find((npc) => npc.role === "father");
+  const motherNpc = network.find((npc) => npc.role === "mother");
+  const livingKin = network.filter((npc) => {
+    if (npc.alive === false) return false;
+    if (npc.deathYear != null && Number(npc.deathYear) <= Number(year)) return false;
+    return true;
+  });
+  const kinNames = livingKin.map((npc) => npc.name).filter(Boolean);
   return {
     year,
     birthYear: clock.birthYear,
@@ -141,8 +151,18 @@ export function scanNarrativeFacts(ctx = {}) {
     hasMotherRecord,
     fatherAlive: hasFatherRecord ? life.fatherAlive !== false : true,
     motherAlive: hasMotherRecord ? life.motherAlive !== false : true,
+    fatherName: fatherNpc?.name || parents.father?.name || "",
+    motherName: motherNpc?.name || parents.mother?.name || "",
+    kinLiving: livingKin.map((npc) => ({
+      role: npc.role,
+      name: npc.name,
+      affection: npc.affection,
+      attitude: npc.attitude,
+    })),
+    kinNames,
     orphan: Boolean(hasFatherRecord && hasMotherRecord && life.orphan),
     health,
+    sanity,
     hungry: Boolean(life.hungry) || health <= 36 || tags.includes("household_hungry"),
     edema: health <= 32 || tags.includes("household_hungry") || tags.includes("socio_extreme_poverty"),
     fever: health <= 28 || tags.some((tag) => String(tag).startsWith("condition_")),

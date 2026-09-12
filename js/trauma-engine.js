@@ -83,10 +83,12 @@ export function modifyResolutionForTrauma(character, option, effects, texts) {
   const next = { ...effects };
 
   const strained = records.some((item) => (item.strainIn || []).some((hook) => hooks.includes(hook)));
-  const vigil = records.some((item) => item.id === "trauma_hypervigilance");
+  const vigil = records.some((item) => item.id === "trauma_hypervigilance" || item.id === "trauma_ptsd");
   const disso = records.some((item) => item.id === "trauma_dissociation");
-  const rage = records.some((item) => item.id === "trauma_rage_leak" || item.id === "trauma_cruelty_rehearsal");
+  const rage = records.some((item) => item.id === "trauma_rage_leak" || item.id === "trauma_cruelty_rehearsal" || item.id === "trauma_persona_crack");
   const noAsk = records.some((item) => item.id === "trauma_cannot_ask_help");
+  const melancholy = records.some((item) => item.id === "trauma_melancholia");
+  const hunted = records.some((item) => item.id === "trauma_persecution");
 
   if (strained) {
     for (const key of Object.keys(next)) {
@@ -118,6 +120,19 @@ export function modifyResolutionForTrauma(character, option, effects, texts) {
     next.mood = (next.mood || 0) - 1;
     extraRisk += 0.06;
     texts.push("求助的肌肉萎縮了。你把該開口的話嚥回去，然後獨自承擔後果。");
+  }
+
+  if (melancholy) {
+    extraRisk += 0.07;
+    if (next.intelligence > 0) next.intelligence = Math.max(0, next.intelligence - 1);
+    next.mood = (next.mood || 0) - 1;
+    texts.push("沉鬱把起身、開口和判斷都拖慢。這一週能做成的事少了一截。");
+  }
+
+  if (hunted && hooks.some((hook) => ["social", "official", "ask"].includes(hook))) {
+    extraRisk += 0.08;
+    next.charm = (next.charm || 0) - 1;
+    texts.push("你把普通的眼神讀成抓捕。該問的沒問，該走的路反而繞進更窄的巷。");
   }
 
   return { effects: next, extraRisk };

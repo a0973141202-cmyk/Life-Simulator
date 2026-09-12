@@ -8,26 +8,36 @@ import { chronicleLineKey } from "./chronicle-key.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { applyTheme } from "./theme-manager.js";
 import { describeSocialFeedback, socialStanding } from "./social-feedback.js";
+import { isDossierLeakSentence, isMetaPublicSentence, scrubPublicText } from "./data/public-text.js";
 import { hasHan, isDebugCode, publicTagLabel, sanitizePublicLine, zhClimate } from "./data/ui-zh.js";
 import { FIGURE_INDEX } from "./data/figures/catalog.js";
 import { RELATION_LABEL } from "./data/figure-rules.js";
+import { bindTagTooltips, decorateTagChip } from "./tag-tooltip.js";
+import { readHallOfFame } from "./life-persist.js";
+import { composeMementoCard } from "./memento.js";
+import { inspectPublicLine } from "./text-monitor.js";
+import { sanitizeChronicleText, splitChronicleUnits } from "./chronicle-sanitize.js";
 
 const TAG_PRIORITY = new Set([
   "trauma", "school", "caste", "adult", "world", "figure",
-  "mood", "socio", "path", "crime", "politics", "acquired", "household", "ledger", "social",
-  "ethnicity", "trait", "class", "climate", "region", "parent", "lineage", "condition", "misc",
+  "mood", "socio", "path", "crime", "politics", "acquired", "household", "ledger", "social", "wealth", "kin",
+  "ethnicity", "trait", "class", "climate", "region", "parent", "condition", "misc",
 ]);
 
 const GATES = ["一", "二", "三"];
 const CRISIS_COPY = {
-  idle: "這一週還沒有人把你的名字寫進公開清算。",
+  idle: "這一週還沒有人把你的名字寫進公開名單。",
   calm: "街上還沒有人當眾點你的名字，或把你從隊伍裏拖出去。",
-  watch: "已被注視。通緝、熱度或醜聞正在累積，清算窗口已打開。",
-  crisis: "清算已經公開。權力集團不必公正，只需要名單。",
-  ruin: "毀滅性代價已在帳上。國家機器或地下秩序隨時可以收場。",
+  watch: "已經有人在盯你。排隊、盤問或閒話都比上週緊。",
+  crisis: "街上已經公開點名。衙門或幫派只需要名單，不必講理。",
+  ruin: "國家或幫派已經可以隨時把你收走。",
 };
 
 let onChoose = () => {};
+let hallBrowseOpen = false;
+let selectedHallId = null;
+let onHallSelect = () => {};
+let onHallClose = () => {};
 
 function choose(index) {
   onChoose(index);
@@ -94,7 +104,7 @@ function crisisLevel(state, score) {
 }
 
 function figureName(id) {
-  return FIGURE_INDEX[id]?.name || id || "未知人物";
+  return FIGURE_INDEX[id]?.name || "一位公開人物";
 }
 
 function visibleTags(state) {
@@ -109,7 +119,7 @@ function visibleTags(state) {
     if (String(record.id || "").startsWith("current_")) continue;
     if (/^date_\d/.test(record.id || "")) continue;
     const label = publicTagLabel(record);
-    if (!label || isDebugCode(label)) continue;
+    if (!label || isDebugCode(label) || isDossierLeakSentence(label)) continue;
     if (seen.has(label)) continue;
     seen.add(label);
     picked.push({ ...record, label });
@@ -121,6 +131,7 @@ function visibleTags(state) {
 function renderTags(state) {
   const root = $("tags-container");
   if (!root) return;
+  bindTagTooltips();
   root.replaceChildren();
   const tags = visibleTags(state);
   if (!tags.length) {
@@ -135,6 +146,7 @@ function renderTags(state) {
     chip.className = "tag";
     chip.dataset.cat = record.category || "";
     chip.textContent = record.label;
+    decorateTagChip(chip, record);
     root.append(chip);
   }
 }
@@ -153,19 +165,32 @@ function renderCrisis(state) {
     if (ledger.reputation != null) bits.push(`聲望 ${Math.round(ledger.reputation)}`);
     if (ledger.socialCredit != null) bits.push(`社會信用 ${Math.round(ledger.socialCredit)}`);
   } else if (state.ready) {
-    bits.push(describeSocialFeedback(ledger, { salt: (state.time?.totalWeeksLived || 0) + (ledger.reputation || 0) }));
+    bits.push(describeSocialFeedback(ledger, {
+      salt: (state.time?.totalWeeksLived || 0) + (ledger.reputation || 0),
+      upheaval: state.upheaval,
+      ctx: {
+        narrativeFacts: {
+          year: state.time?.year,
+          city: state.character?.cityName || "",
+          upheavalLabel: state.upheaval?.label || "",
+        },
+      },
+    }));
   }
   if (state.history?.inertia) bits.push(SHOW_REPUTATION_UI
-    ? `歷史慣性 ${Math.round(state.history.inertia)}`
-    : (state.history.inertia >= 12 ? "後續年表已經開始偏離你記得的版本。" : "年表仍按原軌走。"));
-  if (state.history?.rewritten) bits.push("年表已被改寫");
+    ? `年表偏移 ${Math.round(state.history.inertia)}`
+    : (state.history.inertia >= 12 ? "街上開始傳另一套說法，和你記得的對不上。" : "街上的說法還沒跟你記得的那套拆開。"));
+  if (state.history?.rewritten) bits.push("街上開始傳另一套說法，和你記得的對不上。");
+  if (state.wealth?.line) bits.push(state.wealth.line);
+  if (state.kin?.line) bits.push(state.kin.line);
+  const endedFatal = Boolean(state.ending?.fatal || state.ending?.kind === "death");
   text("crisis-alert-text", state.gameOver
-    ? (state.ending?.reason || "檔案已封存。")
+    ? (endedFatal ? "當事人已死。檔案已封存。" : "這一局到此為止。檔案已封存。")
     : CRISIS_COPY[level] || CRISIS_COPY.idle);
   text("crisis-alert-sub", bits.length
     ? bits.join(" · ")
     : (SHOW_REPUTATION_UI
-      ? "預留：通緝、熱度、歷史慣性將在此疊加顯示。"
+      ? "街對你的態度寫在這裡。"
       : "街對你的態度寫在這裡。"));
 }
 
@@ -185,7 +210,7 @@ function renderFigureLog(state) {
       id,
       butterfly: false,
       who: figureName(id),
-      rel: RELATION_LABEL[rel] || rel,
+      rel: RELATION_LABEL[rel] || "公開交集",
       note: history.lastFigureId === id ? "最近一次公開交集。" : "你們已經有過公開交集。",
     });
   }
@@ -194,7 +219,7 @@ function renderFigureLog(state) {
       id: row.figureId,
       butterfly: true,
       who: figureName(row.figureId),
-      rel: row.label || "蝴蝶效應",
+      rel: row.label || "這條街的說法開始不一樣",
       note: row.note || `${row.year || "?"}年，這條街的說法開始跟以前不一樣。`,
     });
   }
@@ -204,7 +229,7 @@ function renderFigureLog(state) {
       status.hidden = false;
       status.textContent = history.lastFigureId
         ? `最近目擊：${figureName(history.lastFigureId)}。還沒有人把你們寫成一夥，也還沒有人把你們寫成對頭。`
-        : "尚無公開交集。人物只在其發跡窗口與地理範圍內入場。";
+        : "街上還沒有人把你和某個名人寫成一夥，也還沒寫成對頭。";
     }
   } else if (status) {
     status.hidden = true;
@@ -229,15 +254,15 @@ function renderFigureLog(state) {
   if (inertia) {
     const value = Math.round(history.inertia || 0);
     inertia.hidden = value <= 0 && !history.rewritten;
-    inertia.textContent = history.rewritten
-      ? `歷史慣性 ${value} · 後續年表已改寫`
-      : `歷史慣性 ${value}`;
+    inertia.textContent = history.rewritten || value >= 12
+      ? "街上開始傳另一套說法，和你記得的對不上。"
+      : "街上的說法還沒跟你記得的那套拆開。";
   }
 }
 
 function paragraph(textValue) {
-  const clean = sanitizePublicLine(textValue);
-  if (!clean) return null;
+  let clean = scrubPublicText(sanitizePublicLine(textValue) || "");
+  if (!clean || isDossierLeakSentence(clean) || isMetaPublicSentence(clean)) return null;
   const p = document.createElement("p");
   p.textContent = clean;
   return p;
@@ -252,45 +277,128 @@ function scrollEventHistoryToLatest(root) {
   requestAnimationFrame(pin);
 }
 
+function isOpeningJournal(entry = {}) {
+  return /出生|意識萌芽/.test(entry.title || "")
+    || /落地|第一次分得清|一名[男女]嬰|出生紀錄/.test(entry.text || "");
+}
+
+function publicLines(raw, year, seen, ctx = {}) {
+  const cleaned = sanitizeChronicleText(String(raw || ""), {
+    ...ctx,
+    year,
+    narrativeFacts: {
+      year,
+      city: ctx.character?.cityName || "",
+      ...(ctx.narrativeFacts || {}),
+    },
+  }, { maxUnits: 8 });
+  const units = splitChronicleUnits(cleaned);
+  return units
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !/落地|第一次分得清|前兩週開始按|一名[男女]嬰|出生紀錄|意識萌芽/.test(line))
+    .filter((line) => !isDossierLeakSentence(line))
+    .filter((line) => {
+      const years = [...line.matchAll(/((?:1[89]|20)\d{2})\s*年/g)].map((row) => Number(row[1]));
+      return !year || !years.length || years.every((stamp) => stamp === year);
+    })
+    .map((line) => scrubPublicText(sanitizePublicLine(line) || line))
+    .filter(Boolean)
+    .filter((line) => !isMetaPublicSentence(line))
+    .filter((line) => inspectPublicLine(line, {
+      ...ctx,
+      year,
+      character: ctx.character,
+    }, { skipVariety: true }).ok)
+    .filter((line) => {
+      const key = chronicleLineKey(line);
+      if (!key || seen.has(key)) return false;
+      if (/(?:1[89]|20)\d{2}年/.test(line)) {
+        if (seen.has("year:lead")) return false;
+        seen.add("year:lead");
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function appendClip(root, { kicker, title, body, year, seen, log, ctx }) {
+  const lines = publicLines(body, year, seen, ctx).map((line) => paragraph(line)).filter(Boolean);
+  if (!lines.length && !title) return;
+  const article = document.createElement("article");
+  article.className = log ? "clip clip-log" : "clip clip-lead";
+  if (kicker) {
+    const kick = document.createElement("p");
+    kick.className = "clip-kicker";
+    kick.textContent = kicker;
+    article.append(kick);
+  }
+  if (title) {
+    const heading = document.createElement("h3");
+    heading.textContent = title;
+    article.append(heading);
+  }
+  if (lines.length) {
+    for (const line of lines) article.append(line);
+  } else {
+    const empty = paragraph("這一期沒有可公開的文字。");
+    if (empty) article.append(empty);
+  }
+  root.append(article);
+}
+
 function renderEvent(state) {
   const root = $("event-history");
   if (!root) return;
   root.replaceChildren();
 
   const event = state.currentEvent || {};
+  const liveYear = Number(state.time?.year);
+  const paintCtx = {
+    year: liveYear,
+    ageYears: state.time?.ageYears,
+    character: state.character,
+    stats: state.stats,
+    tags: state.character?.tags || state.tags,
+  };
+
+  // Past clips: keep only the last two choice records so the panel stays
+  // an archival fortnight, not a wall of recycled years.
+  const pastSeen = new Set();
+  const past = (state.journal || [])
+    .filter((entry) => !isOpeningJournal(entry))
+    .filter((entry) => !isMetaPublicSentence(`${entry.title || ""}${entry.text || ""}`))
+    .slice(-2);
+  for (const entry of past) {
+    appendClip(root, {
+      kicker: entry.year && entry.month ? `${entry.year}年${entry.month}月` : (entry.year ? `${entry.year}年` : ""),
+      title: entry.title && !/死亡證明|封閉測試/.test(entry.title) ? entry.title : "",
+      body: entry.text,
+      year: Number(entry.year) || liveYear,
+      seen: pastSeen,
+      log: true,
+      ctx: paintCtx,
+    });
+  }
+
+  // Current fortnight uses its own dedupe set so prior clips cannot blank it out.
+  const leadSeen = new Set();
   const lead = document.createElement("article");
   lead.className = "clip clip-lead";
-  const kicker = document.createElement("p");
-  kicker.className = "clip-kicker";
-  kicker.textContent = event.turningPoint?.lockedTriad
-    ? "人生轉折"
-    : event.figure?.lockedTriad
-      ? "歷史人物現場"
-      : event.worldEvent?.lockedTriad
-        ? "時空事件"
-        : "本期紀事";
+  const lockedKind = event.breakdown?.lockedTriad ? "撐不住了" : "";
+  if (lockedKind) {
+    const kicker = document.createElement("p");
+    kicker.className = "clip-kicker";
+    kicker.textContent = lockedKind;
+    lead.append(kicker);
+  }
   const title = document.createElement("h3");
   title.textContent = state.character
     ? `${state.character.name || "未名"} · ${state.stage?.label || ""}`
     : "尚未開檔";
-  lead.append(kicker, title);
-  const year = Number(state.time?.year);
-  const seen = new Set();
-  const narrative = String(event.narrative || state.message || "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .filter((line) => !/落地|第一次分得清|前兩週開始按|一名[男女]嬰|出生紀錄|意識萌芽/.test(line))
-    .filter((line) => {
-      const years = [...line.matchAll(/((?:1[89]|20)\d{2})\s*年/g)].map((row) => Number(row[1]));
-      return !year || !years.length || years.every((stamp) => stamp === year);
-    })
-    .filter((line) => {
-      const key = chronicleLineKey(line);
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  lead.append(title);
+  const year = liveYear;
+  const narrative = publicLines(event.narrative || state.message || "", year, leadSeen, paintCtx);
   const lines = narrative.map((line) => paragraph(line)).filter(Boolean);
   if (!lines.length) {
     const empty = paragraph(state.ready ? "本期沒有可公開的文字。" : "從五歲起，每一期只寫這兩週發生的事。");
@@ -305,9 +413,15 @@ function renderEvent(state) {
     banner.className = "ending-banner";
     const h = document.createElement("h3");
     const res = state.ending.resolution || {};
-    h.textContent = res.title
-      || (state.ending.kind === "session_close" ? "人生結算" : (state.ending.fatal === false ? "高齡結算" : "死亡證明"));
-    const endingLine = paragraph(res.epitaph || state.ending.epitaph || state.ending.detail || state.ending.reason || "");
+    const rawTitle = res.title || "";
+    h.textContent = /封閉測試/.test(rawTitle)
+      ? "人生結算"
+      : (rawTitle
+        || (state.ending.kind === "session_close" ? "人生結算" : (state.ending.fatal === false ? "高齡結算" : "死亡證明")));
+    const epitaph = scrubPublicText(String(res.epitaph || state.ending.epitaph || "")
+      .replace(/封閉測試[^。]*/g, "")
+      .replace(/測試版本[^。]*/g, ""));
+    const endingLine = paragraph(epitaph || (state.ending.fatal === false ? "這一局到此為止。" : "當事人已死。"));
     banner.append(h);
     if (endingLine) banner.append(endingLine);
     root.append(banner);
@@ -378,6 +492,7 @@ function paintArchive(state) {
     setMeter("stat-health", 0);
     setMeter("stat-sanity", 0);
     if (SHOW_REPUTATION_UI) setMeter("stat-reputation", 0);
+    setMeter("stat-means", 0);
     setMeter("stat-crisis", 0);
     renderTags({ character: { tagRecords: [] } });
     renderCrisis({ pressure: { level: "idle", score: 0 } });
@@ -392,11 +507,12 @@ function paintArchive(state) {
   const time = state.time || {};
   const city = character.cityName || "";
   const country = character.country || "";
-  const daily = state.dailyState?.label || character.settlementKindLabel || "";
+  const placeKind = String(character.settlementKindLabel || "");
+  const kindOk = /港口|貧民窟|戰亂|工廠|村子|農村|難民|地下街|極地|新都|城市|大城/.test(placeKind);
   const season = character.natalEnvironment?.seasonLabel || "";
   const climate = zhClimate(character.climate) || (hasHan(character.climate) ? character.climate : "");
-  const envBits = [daily, character.settlementKindLabel, climate, season]
-    .filter((bit) => bit && !isDebugCode(bit));
+  const envBits = [kindOk ? placeKind : "", climate, season]
+    .filter((bit) => bit && !isDebugCode(bit) && !/聚落|依附|學齡|課後|開局|主血脈/.test(bit));
   const uniqueEnv = [...new Set(envBits)];
   const location = character.currentPlaceLabel
     || character.birthplaceLabel
@@ -414,13 +530,20 @@ function paintArchive(state) {
   text("life-stage", state.stage?.label || "—");
   text("life-progress", [
     state.lifeProgress?.arcLabel,
-    state.lifeProgress?.dueTitle ? `轉折：${state.lifeProgress.dueTitle}` : "",
+    state.lifeProgress?.dueTitle ? `待決：${state.lifeProgress.dueTitle}` : "",
+    state.career?.sectorLabel || "",
+    (() => {
+      const job = String(state.character?.occupation || "").trim();
+      if (!job || job === "無" || job === "—" || job === "-") return "";
+      return job;
+    })(),
   ].filter(Boolean).join(" · "));
   text("week-label", time.label || "—");
 
   setMeter("stat-health", state.stats?.health);
   setMeter("stat-sanity", sanityOf(state));
   if (SHOW_REPUTATION_UI) setMeter("stat-reputation", reputationOf(state));
+  setMeter("stat-means", state.wealth?.means ?? state.character?.means ?? 40);
   setMeter("stat-crisis", crisisOf(state));
 
   renderTags(state);
@@ -433,27 +556,171 @@ function paintArchive(state) {
   document.body.classList.toggle("is-over", Boolean(state.gameOver));
 }
 
+function cardFromEnding(state) {
+  const ending = state?.ending;
+  if (!ending) return null;
+  return ending.memento || composeMementoCard({
+    character: state.character,
+    time: state.time,
+    ending,
+    resolution: ending.resolution,
+    seed: state.seed,
+    turnCount: state.turnCount,
+  });
+}
+
+function paintMementoCard(card, fallback = {}) {
+  const res = fallback.resolution || {};
+  const character = fallback.character || {};
+  const ending = fallback.ending || {};
+  text("death-kicker", card?.kicker || res.kicker || (ending.fatal === false ? "這一局到此為止" : "當事人已死"));
+  text("death-resolution-title", card?.title || res.title || (ending.fatal === false ? "人生結算" : "死亡證明"));
+  text("death-name", card?.name || res.name || character.name || "未名");
+  text("death-birthplace", card?.birthplace || res.birthplace || character.birthplaceLabel || "出生地未登記");
+  text("death-age", card?.ageLine || res.ageLine || (card?.ageYears != null ? `享年 ${card.ageYears} 歲` : "—"));
+  text("death-weeks", card?.weeksLine || (card?.weeksLived != null ? `存活 ${card.weeksLived} 週` : "—"));
+  text("death-year", card?.yearLine || res.yearLine || (card?.endYear ? `${card.endYear}年` : "—"));
+  text("death-cause", card?.cause || res.cause || ending.reason || "原因未登記");
+  text("death-era", card?.eraPressure || res.eraPressure || "");
+  const tagsRoot = $("memento-tags");
+  if (tagsRoot) {
+    tagsRoot.replaceChildren();
+    const tags = card?.tags || [];
+    if (!tags.length) {
+      const empty = document.createElement("p");
+      empty.className = "memento-tags-empty";
+      empty.textContent = "這一世沒有留下可被街坊叫得出來的創傷或稀有標記。";
+      tagsRoot.append(empty);
+    } else {
+      bindTagTooltips();
+      for (const record of tags) {
+        const chip = document.createElement("span");
+        chip.className = "tag";
+        chip.dataset.cat = record.category || "";
+        chip.textContent = record.label;
+        decorateTagChip(chip, record);
+        tagsRoot.append(chip);
+      }
+    }
+  }
+}
+
+function renderHallList(cards, currentId) {
+  const list = $("hall-of-fame-list");
+  if (!list) return;
+  list.replaceChildren();
+  if (!cards.length) {
+    const empty = document.createElement("li");
+    const note = document.createElement("p");
+    note.className = "hall-empty";
+    note.textContent = "紀念館還是空的。一條人生結束後，卡片會留在這裡。";
+    empty.append(note);
+    list.append(empty);
+    return;
+  }
+  for (const card of cards) {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "hall-card";
+    if (card.id === currentId) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+    const name = document.createElement("span");
+    name.className = "hall-card-name";
+    name.textContent = card.name || "未名";
+    const meta = document.createElement("span");
+    meta.className = "hall-card-meta";
+    const span = [card.birthYear, card.endYear].filter((year) => year != null).join("–");
+    meta.textContent = [
+      span ? `${span}年` : "",
+      card.ageYears != null ? `${card.ageYears}歲` : "",
+      card.weeksLived != null ? `${card.weeksLived}週` : "",
+    ].filter(Boolean).join(" · ");
+    button.append(name, meta);
+    button.addEventListener("click", () => {
+      selectedHallId = card.id;
+      onHallSelect(card);
+    });
+    item.append(button);
+    list.append(item);
+  }
+}
+
+let overlayBound = false;
+
+function bindDeathOverlay() {
+  const root = $("death-resolution");
+  if (!root || overlayBound) return;
+  overlayBound = true;
+  root.addEventListener("click", (event) => {
+    if (event.target !== root) return;
+    if (root.dataset.mode !== "browse") return;
+    closeHallOfFame();
+    onHallClose();
+  });
+}
+
 function renderDeathResolution(state) {
   const root = $("death-resolution");
   if (!root) return;
+  bindDeathOverlay();
   const ending = state?.ending;
-  const show = Boolean(state?.gameOver && ending);
+  const settle = Boolean(state?.gameOver && ending);
+  const browse = hallBrowseOpen && !settle;
+  const show = settle || browse;
   root.hidden = !show;
   root.setAttribute("aria-hidden", show ? "false" : "true");
+  root.dataset.mode = settle ? "settle" : (browse ? "browse" : "");
   document.body.classList.toggle("has-death-panel", show);
+  const rebirth = $("btn-rebirth");
+  const closeBtn = $("btn-hall-close");
+  if (rebirth) {
+    rebirth.hidden = !settle;
+    rebirth.textContent = ending?.resolution?.rebirthLabel || "接受命運，開啟新的一生";
+  }
+  if (closeBtn) closeBtn.hidden = !browse;
   if (!show) return;
-  const res = ending.resolution || {};
-  const character = state.character || {};
-  text("death-kicker", res.kicker || (ending.fatal === false ? "這一局到此為止" : "當事人已死"));
-  text("death-resolution-title", res.title || (ending.fatal === false ? "人生結算" : "死亡證明"));
-  text("death-name", res.name || character.name || "未名");
-  text("death-birthplace", res.birthplace || character.birthplaceLabel || "出生地未登記");
-  text("death-age", res.ageLine || `活到 ${ending.ageYears ?? state.time?.ageYears ?? "?"} 歲`);
-  text("death-year", res.yearLine || (ending.year ? `${ending.year}年` : (state.time?.year ? `${state.time.year}年` : "—")));
-  text("death-cause", res.cause || ending.reason || ending.detail || "原因未登記");
-  text("death-era", res.eraPressure || state.era?.summary || "");
-  const button = $("btn-rebirth");
-  if (button) button.textContent = res.rebirthLabel || "重新投胎（開新局）";
+  const hall = readHallOfFame();
+  const liveCard = settle ? cardFromEnding(state) : null;
+  const featured = (selectedHallId && hall.find((row) => row.id === selectedHallId))
+    || liveCard
+    || hall[0]
+    || null;
+  if (featured) selectedHallId = featured.id;
+  if (featured || settle) {
+    paintMementoCard(featured, {
+      resolution: ending?.resolution,
+      character: state?.character,
+      ending,
+    });
+  } else {
+    paintMementoCard({
+      kicker: "紀念館",
+      title: "尚無結案人生",
+      name: "—",
+      birthplace: "—",
+      ageLine: "—",
+      weeksLine: "—",
+      yearLine: "—",
+      cause: "還沒有人在這部裝置上走完一生。",
+      tags: [],
+    });
+  }
+  renderHallList(hall, featured?.id || selectedHallId);
+}
+
+export function openHallOfFame(cardId = null) {
+  hallBrowseOpen = true;
+  selectedHallId = cardId;
+}
+
+export function closeHallOfFame() {
+  hallBrowseOpen = false;
+  selectedHallId = null;
+}
+
+export function isHallBrowseOpen() {
+  return hallBrowseOpen;
 }
 
 function syncNewFileControl(state) {
@@ -470,6 +737,8 @@ function syncNewFileControl(state) {
 
 export function renderLifeSim(state, handlers = {}) {
   if (typeof handlers.onChoose === "function") onChoose = handlers.onChoose;
+  if (typeof handlers.onHallSelect === "function") onHallSelect = handlers.onHallSelect;
+  if (typeof handlers.onHallClose === "function") onHallClose = handlers.onHallClose;
   render(state);
 }
 
@@ -480,6 +749,6 @@ export function showBootError(error) {
     return;
   }
   root.replaceChildren();
-  root.append(paragraph(`開檔失敗：${error?.message || error}`));
+  root.append(paragraph("開檔失敗。這份檔案無法公開讀出。"));
   scrollEventHistoryToLatest(root);
 }

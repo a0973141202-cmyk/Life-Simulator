@@ -52,7 +52,7 @@ export function dressOption(rng, option, ctx, profile) {
   const trueText = publicActionLabel(option, option.text);
 
   const forceFog = slot === "trap" || slot === "foggood" || profile?.id === "trap_week";
-  const lockedFact = option.traumaVictim || option.schoolIncident || option.perpCasteEcology
+  const lockedFact = option.traumaVictim || option.breakdownIncident || option.schoolIncident || option.perpCasteEcology
     || option.adultIncident || option.worldEvent || option.figureEncounter;
   const style = (!lockedFact && (forceFog || !chance(rng, 0.5))) ? "fog" : "blunt";
 

@@ -11,6 +11,9 @@ import { NPC_GLOSS_NOTE } from "./data/prose-rules.js";
 import { socialStanding } from "./social-feedback.js";
 import { pick } from "./rng.js";
 import { ctxHasTag } from "./choice-pool.js";
+import { composeNpcQuote } from "./dynamic-prose.js";
+import { monitorPublicText } from "./text-monitor.js";
+import { kinVoiceMeta } from "./npc-social-engine.js";
 
 export { NPC_VOICES };
 export { NPC_GLOSS_NOTE };
@@ -175,33 +178,48 @@ export function attitudeTowardPlayer(ctx = {}, speaker = "civilian") {
 
 export function speakNpc(ctx = {}, incident = {}, rng = null) {
   if (incident?.muteNpc || incident?.npcSpeech === false) return null;
-  const speaker = resolveNpcSpeaker(ctx, incident);
-  const attitude = attitudeTowardPlayer(ctx, speaker);
+  let speaker = resolveNpcSpeaker(ctx, incident);
+  let attitude = attitudeTowardPlayer(ctx, speaker);
+  let whoOverride = incident.figureName || null;
+  let kinAttitude = null;
+  if (speaker === "household" && ctx.character) {
+    const meta = incident.kinMeta || ctx.kinVoice || kinVoiceMeta(ctx.character, ctx);
+    if (meta?.who) {
+      whoOverride = meta.who;
+      attitude = meta.attitude || attitude;
+      speaker = meta.speaker || speaker;
+      kinAttitude = meta.kinAttitude || null;
+    }
+  }
   const pack = NPC_VOICES[speaker] || NPC_VOICES.civilian;
   const rows = pack[attitude] || pack.ordinary || [];
   const row = pickRow(rows, rng, saltOf(ctx, incident));
-  if (!row) return null;
-  const who = incident.figureName || row.who || pack.label;
+  const who = whoOverride || row?.who || pack.label;
+  const live = composeNpcQuote(ctx, incident, { speaker, attitude, who, kinAttitude });
+  if (!live?.quote) return null;
   return {
     speaker,
     attitude,
     who,
-    quote: row.quote,
-    gloss: row.gloss,
+    quote: live.quote,
+    gloss: live.gloss,
   };
 }
 
-export function formatNpcSpeech(speech) {
+export function formatNpcSpeech(speech, opts = {}) {
   if (!speech?.quote) return "";
-  const who = speech.who ? `——${speech.who}。` : "。";
-  return `「${speech.quote}」${who}${speech.gloss}`;
+  const who = speech.who ? `——${speech.who}` : "";
+  if (opts.skipGloss) return `「${speech.quote}」${who}`.trim();
+  const gloss = String(speech.gloss || "").trim();
+  return gloss ? `「${speech.quote}」${who}。${gloss}` : `「${speech.quote}」${who}`.trim();
 }
 
 export function attachNpcSpeech(systemText, ctx = {}, incident = {}, rng = null) {
   const body = String(systemText || "").trim();
   if (!body) return "";
   const speech = speakNpc(ctx, incident, rng);
-  const line = formatNpcSpeech(speech);
+  const line = formatNpcSpeech(speech, { skipGloss: Boolean(incident.skipGloss) });
   if (!line) return body;
-  return `${body}\n${line}`;
+  const gated = monitorPublicText(rng, `${body}\n${line}`, ctx, { kind: "npc" });
+  return gated || `${body}\n${line}`;
 }

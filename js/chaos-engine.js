@@ -69,8 +69,8 @@ export function distortOption(rng, option, slot, ctx = {}) {
   const age = ctx.ageYears ?? 0;
 
   // Trauma invoices stay cost-heavy. Chaos may worsen them, never convert injury into a gift.
-  if (option.traumaVictim || option.schoolIncident || option.perpCasteEcology || option.adultIncident || option.worldEvent || option.figureEncounter) {
-    if (option.schoolIncident || option.perpCasteEcology || option.adultIncident || option.worldEvent || option.figureEncounter) {
+  if (option.traumaVictim || option.breakdownIncident || option.schoolIncident || option.perpCasteEcology || option.adultIncident || option.worldEvent || option.figureEncounter) {
+    if (option.breakdownIncident || option.schoolIncident || option.perpCasteEcology || option.adultIncident || option.worldEvent || option.figureEncounter) {
       next.chaosSlot = slot || "fact";
       next.trap = false;
       return next;

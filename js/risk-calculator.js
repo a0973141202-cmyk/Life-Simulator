@@ -6,6 +6,9 @@
 
 import { eraWindowForYear, TAG_RISK_MODIFIERS } from "./data/era-risk.js";
 import { socialAttemptMod } from "./social-feedback.js";
+import { evaluateEraCrisis } from "./history-crisis-engine.js";
+import { findSettlement, getSettlementCountry } from "./settlements.js";
+import { canonicalizeCountry } from "./demographics-engine.js";
 
 function clamp01(value, min = 0.01, max = 0.92) {
   return Math.max(min, Math.min(max, value));
@@ -88,17 +91,45 @@ export function evaluateAttempt(rng, character, time, attempt = {}) {
     mods.attemptBonus +
     pathBonus;
 
+  const settlement = character.settlement || findSettlement(character.cityId);
+  const eraCrisis = evaluateEraCrisis({
+    year: time.year,
+    week: time.week,
+    region: character.region,
+    country: canonicalizeCountry(
+      getSettlementCountry(settlement, time.year) || character.country || "",
+      time.year,
+      character.region || settlement?.region,
+    ),
+    familyClassId: character.familyClassId,
+    tags: character.tags,
+    character,
+    settlement,
+  });
+  const breakdown = (character.tags || []).some((tag) => String(tag).startsWith("trauma_") && (
+    tag === "trauma_ptsd"
+    || tag === "trauma_melancholia"
+    || tag === "trauma_persecution"
+    || tag === "trauma_persona_crack"
+  ));
   const drag =
     (ledger.wanted || 0) * 0.0028 +
     (ledger.heat || 0) * 0.0022 +
     Math.max(0, 40 - (ledger.trust || 50)) * 0.002 +
-    Math.max(0, 35 - (stats.health || 50)) * 0.001;
+    Math.max(0, 35 - (stats.health || 50)) * 0.001 +
+    Math.max(0, 40 - (stats.sanity || 50)) * 0.0018 +
+    eraCrisis.score * 0.0009 +
+    (breakdown ? 0.045 : 0);
 
   const chance = clamp01(base + support - drag, 0.015, attempt.maxChance ?? 0.78);
   const roll = rng();
   const success = roll < chance;
 
-  const backlashBase = (attempt.backlashScale ?? 1) * (0.18 + (mods.backlash || 0) + (1 - chance) * 0.35);
+  const backlashBase = (attempt.backlashScale ?? 1) * (
+    0.18 + (mods.backlash || 0) + (1 - chance) * 0.35
+    + (eraCrisis.score >= 42 ? 0.08 : eraCrisis.score >= 22 ? 0.04 : 0)
+    + (breakdown ? 0.05 : 0)
+  );
   const backlashChance = clamp01(
     attempt.backlashEvenIfSuccess || !success
       ? backlashBase + (success ? 0.08 : 0.22)
@@ -114,7 +145,7 @@ export function evaluateAttempt(rng, character, time, attempt = {}) {
 
   let narrative;
   if (success && backlash) {
-    narrative = `這一步暫時得手（成功率約 ${Math.round(chance * 100)}%），但${mods.window?.note || "時代"}立刻開始計價。`;
+    narrative = `這一步暫時得手，但${mods.window?.note || "時代"}立刻開始反噬。`;
   } else if (success) {
     narrative = `窗口對準了。以當下年份、輿論與標籤估算，這次嘗試約有 ${Math.round(chance * 100)}% 的機會，而你踩中了。`;
   } else if (backlash) {
@@ -146,12 +177,21 @@ export function crisisPressure(ledger = {}, extra = {}) {
   const trustGap = Math.max(0, 45 - (ledger.trust || 50));
   const upheavalScore = extra.upheavalScore ?? extra.upheaval?.score ?? 0;
   const worldPressure = extra.worldPressure ?? 0;
+  const eraCrisis = extra.eraCrisis ?? extra.eraCrisisScore ?? 0;
+  const sanityGap = extra.sanityGap ?? 0;
+  const wealthGap = extra.wealthGap ?? extra.wealthPressure ?? 0;
+  const kinGap = extra.kinGap ?? extra.kinPressure ?? 0;
   const score = wanted * 0.45 + heat * 0.35 + infamy * 0.15 + trustGap * 0.2
-    + upheavalScore * 0.55 + worldPressure * 0.12;
+    + upheavalScore * 0.55 + worldPressure * 0.12
+    + eraCrisis * 0.7 + sanityGap * 0.35 + wealthGap * 0.55 + kinGap * 0.5;
   return {
     score,
     level: score >= 70 ? "ruin" : score >= 48 ? "crisis" : score >= 28 ? "watch" : "calm",
     upheavalScore,
+    eraCrisis,
+    sanityGap,
+    wealthGap,
+    kinGap,
   };
 }
 

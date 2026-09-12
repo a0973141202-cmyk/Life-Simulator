@@ -17,6 +17,9 @@ import {
   taggedRoomLeft,
 } from "./tag-influence.js";
 import { optionExcluded, rememberExcluded } from "./exclusion-buffer.js";
+import { normalizeChoiceText, textsTooSimilar } from "./choice-similarity.js";
+
+export { normalizeChoiceText, textsTooSimilar };
 
 const CANONICAL_PREFIXES = Object.freeze(Object.values(TAG_PREFIX));
 
@@ -89,37 +92,6 @@ function pushUnique(list, value, cap) {
 
 export function baseActionId(id) {
   return String(id || "").replace(/__\d+$/, "").replace(/^fog_/, "");
-}
-
-export function normalizeChoiceText(text) {
-  return String(text || "")
-    .replace(/〔[^〕]*〕/g, "")
-    .replace(/[^\u4e00-\u9fffA-Za-z0-9]/g, "")
-    .slice(0, 40);
-}
-
-export function textsTooSimilar(left, right) {
-  const a = normalizeChoiceText(left);
-  const b = normalizeChoiceText(right);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const shorter = a.length <= b.length ? a : b;
-  const longer = a.length <= b.length ? b : a;
-  if (shorter.length >= 6 && longer.includes(shorter)) return true;
-  let prefix = 0;
-  while (prefix < shorter.length && shorter[prefix] === longer[prefix]) prefix += 1;
-  if (prefix >= 8) return true;
-  const grams = (value) => {
-    const out = new Set();
-    for (let i = 0; i < value.length - 1; i += 1) out.add(value.slice(i, i + 2));
-    return out;
-  };
-  const ga = grams(a);
-  const gb = grams(b);
-  let inter = 0;
-  for (const gram of ga) if (gb.has(gram)) inter += 1;
-  const union = ga.size + gb.size - inter;
-  return union > 0 && inter >= 4 && inter / union >= 0.55;
 }
 
 export function collectCtxTags(ctx = {}) {
@@ -381,7 +353,8 @@ export function pickDiverseTriad(rng, pool, count, ctx, opts = {}) {
   const take = (mode) => {
     const eligible = source.filter((action) => canAdd(action, picked, memory, mode, maxTagged, ctx));
     if (!eligible.length) return false;
-    const item = pickWeighted(rng, eligible, (action) => choiceWeight(action, ctx));
+    const weigh = opts.getWeight || ctx.getWeight || ((row) => choiceWeight(row, ctx));
+    const item = pickWeighted(rng, eligible, weigh);
     if (!item) return false;
     picked.push(item);
     return true;
