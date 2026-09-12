@@ -181,9 +181,11 @@ export function crisisPressure(ledger = {}, extra = {}) {
   const sanityGap = extra.sanityGap ?? 0;
   const wealthGap = extra.wealthGap ?? extra.wealthPressure ?? 0;
   const kinGap = extra.kinGap ?? extra.kinPressure ?? 0;
-  const score = wanted * 0.45 + heat * 0.35 + infamy * 0.15 + trustGap * 0.2
+  const personaResist = Number(extra.personaResist || 0);
+  const score = Math.max(0, wanted * 0.45 + heat * 0.35 + infamy * 0.15 + trustGap * 0.2
     + upheavalScore * 0.55 + worldPressure * 0.12
-    + eraCrisis * 0.7 + sanityGap * 0.35 + wealthGap * 0.55 + kinGap * 0.5;
+    + eraCrisis * 0.7 + sanityGap * 0.35 + wealthGap * 0.55 + kinGap * 0.5
+    - personaResist);
   return {
     score,
     level: score >= 70 ? "ruin" : score >= 48 ? "crisis" : score >= 28 ? "watch" : "calm",
@@ -192,6 +194,7 @@ export function crisisPressure(ledger = {}, extra = {}) {
     sanityGap,
     wealthGap,
     kinGap,
+    personaResist,
   };
 }
 

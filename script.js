@@ -240,6 +240,18 @@ import { SHOW_REPUTATION_UI } from "./js/data/ui-config.js";
 import { canBeginNewLife } from "./js/life-session.js";
 import { SAVE_KEY, clearLifeSave, readLifeSave } from "./js/life-persist.js";
 
+/** Hidden special presets via ?code= / ?unlock= / ?preset= (e.g. yajuu, 下北澤). */
+function specialOverridesFromLocation() {
+  try {
+    const params = new URLSearchParams(window.location.search || "");
+    const code = params.get("code") || params.get("unlock") || params.get("preset") || "";
+    if (!code) return {};
+    return { specialCode: String(code).trim() };
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Browser game loop. HUD fields match index.html IDs.
  * Survival, tags, geography, and triad events stay in GameEngine;
@@ -331,7 +343,7 @@ export class CenturyLifeLoop {
       }
       clearLifeSave();
       this.engine = new GameEngine();
-      const state = this.engine.initNewGame();
+      const state = this.engine.initNewGame(specialOverridesFromLocation());
       closeHallOfFame();
       this.sync(state).paint();
       return state;

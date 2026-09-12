@@ -129,6 +129,20 @@ export const TAG_ID_ZH = Object.freeze({
   class_worker: "勞工戶",
   class_peasant: "務農戶",
   class_merchant: "行商戶",
+  persona_hardy: "吃苦耐勞",
+  persona_cat_keeper: "貓奴",
+  persona_loyal_friend: "重朋友",
+  persona_faithful: "感情專一",
+  persona_gentle: "個性溫和",
+  persona_high_roller: "賭豪",
+  persona_brotherhood: "重義氣",
+  persona_principled: "講求原則",
+  persona_quit_ahead: "見好就收",
+  persona_shimokita_legend: "下北澤傳奇",
+  persona_beast_instinct: "野獸直覺",
+  persona_athlete: "體育生",
+  persona_high_pressure: "高壓生存",
+  persona_abyss_magnet: "深淵磁場",
 });
 
 const HAN_RE = /[\u4e00-\u9fff]/;
@@ -173,6 +187,7 @@ export function publicTagLabel(record = {}) {
   if (id.startsWith("ethnicity_")) return "族裔";
   if (id.startsWith("household_")) return "家裏的規矩";
   if (id.startsWith("trauma_")) return "舊傷";
+  if (id.startsWith("persona_")) return lookupPrefixed(id) || "性子";
   if (id.startsWith("socio_")) return "門戶光景";
   if (DEBUG_ID_RE.test(id) || DEBUG_ID_RE.test(raw)) return "";
   return "";

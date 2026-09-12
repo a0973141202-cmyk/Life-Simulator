@@ -66,6 +66,10 @@ const PREFIX_BEATS = [
     "至親的臉色、缺席或仇隙比街坊閒話先到。",
     "你先看屋裏還認不認你，再談外頭。",
   ], [8, 120], { direction: "endure", hooks: ["family", "home"] }],
+  ["persona_", "link_persona", "按自己認的那一套性子把這一週能做的做完", { mood: 1, charm: 1 }, [
+    "吃苦、顧貓、重朋友或守住一句答應，都寫進走路的方式。",
+    "旁人覺得你脾氣軟或脾氣韌。你只是按認得的那套做完。",
+  ], [5, 120], { direction: "help", hooks: ["social", "family"] }],
   ["settlement_", "link_settlement", "用這座城或這個村子認得的走法過這一週", { intelligence: 1 }, [
     "門牌會變。巷的氣味比較慢。",
     "你走熟路。熟路也會突然被封。",

@@ -13,6 +13,7 @@ import { ensureDistinctChoiceTriad } from "./choice-dedupe.js";
 import { tagValence } from "./tag-influence.js";
 import { filterPublicLine } from "./text-logic-filter.js";
 import { publicTagLabel } from "./data/ui-zh.js";
+import { weavePersonaOptions } from "./persona-engine.js";
 
 const PREFIX_KIND = Object.freeze({
   trauma: { kind: "family", dirs: ["endure", "flee", "resist"], risk: "high", effects: { sanity: -1, health: -1 } },
@@ -44,6 +45,7 @@ const PREFIX_KIND = Object.freeze({
   lineage: { kind: "family", dirs: ["endure", "withdraw", "resist"], risk: "mid", effects: { charm: -1 } },
   politics: { kind: "family", dirs: ["endure", "resist", "flee"], risk: "high", effects: { mood: -1 } },
   ledger: { kind: "money", dirs: ["guard", "flee", "endure"], risk: "high", effects: { mood: -1 } },
+  persona: { kind: "family", dirs: ["help", "endure", "seek"], risk: "low", effects: { mood: 1, charm: 1 } },
 });
 
 const DIR_ALIASES = Object.freeze({
@@ -85,6 +87,7 @@ function scoreTag(tag, ctx) {
   const valence = tagValence(tag, ctx);
   let score = 1;
   if (cat === "trauma" || cat === "wealth" || cat === "kin" || cat === "caste") score += 4;
+  if (cat === "persona") score += 5;
   if (cat === "household" || cat === "school" || cat === "mood" || cat === "path") score += 3;
   if (cat === "socio" || cat === "condition" || cat === "adult") score += 2;
   if (valence === "strain") score += 2;
@@ -114,7 +117,8 @@ function laneFromTag(tag, ctx, index) {
       cat === "lineage" || cat === "ethnicity" ? "出身"
         : cat === "household" ? "家裏的規矩"
           : cat === "trauma" ? "舊傷"
-            : "身上的標記"
+            : cat === "persona" ? "性子"
+              : "身上的標記"
     ),
   };
 }
@@ -229,7 +233,7 @@ export function mintTagDrivenTriad(rng, ctx = {}) {
       untaggedBaseline: false,
     };
   });
-  return ensureDistinctChoiceTriad(rng, options, ctx).map((option, index) => ({
+  const distinct = ensureDistinctChoiceTriad(rng, options, ctx).map((option, index) => ({
     ...options[index],
     ...option,
     text: option.text,
@@ -237,6 +241,7 @@ export function mintTagDrivenTriad(rng, ctx = {}) {
     tagDriven: true,
     liveTagMint: true,
   }));
+  return weavePersonaOptions(rng, distinct, ctx);
 }
 
 /**

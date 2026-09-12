@@ -26,6 +26,11 @@ import { zhClimate, zhRegion } from "./data/ui-zh.js";
 import { formatCulturalName, composeCulturalName, resolveNamingEthnicity } from "./naming-engine.js";
 import { buildConstitution } from "./constitution.js";
 import {
+  applySpecialPresetOverrides,
+  rollSpecialPreset,
+  stampSpecialOpening,
+} from "./data/special-presets.js";
+import {
   FORBIDDEN_SETTLEMENT_IDS,
   SETTLEMENTS,
   assertSettlementLegal,
@@ -606,6 +611,10 @@ export class GenesisEngine {
 
   generateRandomCharacter(overrides = {}) {
     const rng = this.rng;
+    const specialRoll = rollSpecialPreset(rng, overrides);
+    if (specialRoll.hit) {
+      overrides = applySpecialPresetOverrides(overrides, specialRoll.preset);
+    }
     const requestedDate = parseDateInput(overrides.birthDate || overrides);
     if (requestedDate && (requestedDate.year < YEAR_MIN || requestedDate.year > YEAR_MAX)) {
       throw new Error(`Birth year must be between ${YEAR_MIN} and ${YEAR_MAX}`);
@@ -912,6 +921,8 @@ export class GenesisEngine {
         ethnicityCatalogSize: this.registry.ethnicities.length,
         traitCatalogSize: this.registry.traits.length,
         birthIso: birthDate.iso,
+        specialPresetId: specialRoll.hit ? specialRoll.preset.id : null,
+        specialPresetOdds: "1/10000",
       },
     };
 
@@ -920,6 +931,7 @@ export class GenesisEngine {
     syncWealthTags(character);
     seedNpcNetwork(character, rng);
     syncKinTags(character, { year: birthYear });
+    if (specialRoll.hit) stampSpecialOpening(character, specialRoll.preset);
     return character;
   }
 

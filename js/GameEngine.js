@@ -103,6 +103,16 @@ import {
   weeklyEconomicTick,
 } from "./wealth-engine.js";
 import {
+  applyAthleteHighPressureTick,
+  applyBrotherhoodStandChoice,
+  applyQuitAheadStopLoss,
+  enhanceWealthStakeForPersona,
+  personaCrisisResistBonus,
+  resolveAbyssMagnetism,
+  resolvePersonaPaybacks,
+  rollPersonaCrisisSwing,
+} from "./persona-engine.js";
+import {
   applyChoiceKinEffects,
   applyKinCrisisChoice,
   armKinCrisis,
@@ -256,6 +266,7 @@ export class GameEngine {
         sanityGap: Math.max(0, 40 - (this.character.stats?.sanity ?? 50)),
         wealthGap: wealthPressureScore(this.character),
         kinGap: kinPressureScore(this.character, time.year),
+        personaResist: personaCrisisResistBonus(this.character),
       }),
       upheaval: publicUpheavalView(this.character.upheavalState),
       sandbox: {
@@ -472,13 +483,28 @@ export class GameEngine {
       ? applyWealthCrisisChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
       : { applied: [], notes: [], tags: [] };
     const wealthStake = option.wealthStake
-      ? resolveWealthStake(this.rng, this.character, option, { ...ctx, time: ctx.time })
+      ? resolveWealthStake(
+        this.rng,
+        this.character,
+        enhanceWealthStakeForPersona(option, this.character),
+        { ...ctx, time: ctx.time },
+      )
       : { triggered: false, note: "" };
+    const brotherhood = applyBrotherhoodStandChoice(this.character, option, {
+      ...ctx,
+      turnCount: this.turnCount,
+      time: ctx.time,
+    });
     const kinCrisis = option.kinCrisis
       ? applyKinCrisisChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
       : { applied: [], notes: [], tags: [] };
     applyChoiceKinEffects(this.character, option, { ...ctx, year: ctx.year || ctx.time?.year });
     const economy = weeklyEconomicTick(this.character, { ...ctx, ...this._context() });
+    const stopLoss = applyQuitAheadStopLoss(this.character, {
+      ...ctx,
+      turnCount: this.turnCount,
+      time: ctx.time,
+    });
     const wealthSync = syncWealthTags(this.character);
     armWealthCrisis(this.character, {
       ...ctx,
@@ -491,7 +517,19 @@ export class GameEngine {
       appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) + (dripW.applied.sanity || 0);
     }
     const kinWeek = weeklyNpcTick(this.character, { ...ctx, ...this._context(), turnCount: this.turnCount }, this.rng);
+    const abyss = resolveAbyssMagnetism(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      year: ctx.year || ctx.time?.year,
+      time: ctx.time,
+    });
     const kinSync = syncKinTags(this.character, { year: ctx.year || ctx.time?.year });
+    const payback = resolvePersonaPaybacks(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      pressure: karma.pressure,
+      time: ctx.time,
+    });
     armKinCrisis(this.character, {
       ...ctx,
       turnCount: this.turnCount,
@@ -611,6 +649,23 @@ export class GameEngine {
       appliedBundle.applied.mood = (appliedBundle.applied.mood || 0) + (dripC.applied.mood || 0);
     }
     const eraNow = evaluateEraCrisis({ ...ctx, ...this._context(), upheaval: this.character.upheavalState });
+    const crisisSwing = rollPersonaCrisisSwing(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      time: ctx.time,
+    });
+    const athleteDrain = applyAthleteHighPressureTick(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      upheavalScore: this.character.upheavalState?.score || 0,
+      eraCrisis: eraNow.score,
+      wealthGap: wealthPressureScore(this.character),
+      pressure: karma.pressure,
+    });
+    if (athleteDrain.applied && athleteDrain.drain) {
+      appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) - athleteDrain.drain;
+      appliedBundle.applied.health = (appliedBundle.applied.health || 0) + 1;
+    }
     const sanityWeek = weeklySanityCrisis(this.character, {
       ...ctx,
       eraCrisis: eraNow,
@@ -632,6 +687,7 @@ export class GameEngine {
         sanityGap: Math.max(0, 40 - (this.character.stats?.sanity ?? 50)),
         wealthGap: wealthPressureScore(this.character),
         kinGap: kinPressureScore(this.character, ctx.year || ctx.time?.year),
+        personaResist: personaCrisisResistBonus(this.character),
       }),
     });
     const lifecycle = weeklyTagLifecycle(this.character, {
@@ -678,7 +734,7 @@ export class GameEngine {
       ageYears: beforeTime.ageYears,
       choiceIndex,
       choiceText: option.trueText || option.text,
-      followUpText: monitorPublicText(this.rng, scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes, sanityWeek.note, economy.note, wealthStake.note, ...(breakdown.notes || []), ...(wealthCrisis.notes || []), ...(kinCrisis.notes || []), ...(kinWeek.notes || []), ...(lifecycle.notes || [])].filter(Boolean).join(" ")), ctx, { kind: "follow" }),
+      followUpText: monitorPublicText(this.rng, scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes, sanityWeek.note, economy.note, wealthStake.note, stopLoss.note, brotherhood.note, payback.note, crisisSwing.note, athleteDrain.note, abyss.note, ...(breakdown.notes || []), ...(wealthCrisis.notes || []), ...(kinCrisis.notes || []), ...(kinWeek.notes || []), ...(lifecycle.notes || [])].filter(Boolean).join(" ")), ctx, { kind: "follow" }),
       effects: combinedEffects,
       applied: appliedBundle.applied,
       tagsGained: [

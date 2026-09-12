@@ -416,6 +416,58 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     if (dir === "help") return `用還剩的力氣幫${who}把這一週能做的做完`;
     return `按還在身上的傷，這兩週只做${city}還能做完的事`;
   }
+  if (focus(["persona"], /^persona_/)) {
+    const drivers = (extra.driverTags || []).map(String);
+    if (drivers.includes("persona_shimokita_legend") || drivers.includes("persona_beast_instinct")) {
+      if (dir === "resist" || dir === "guard") return `憑野獸直覺在${city}街頭的縫裡找一條活路`;
+      if (dir === "flee") return `危機一響就鑽進${city}巷弄，不跟絕境硬剛到底`;
+      if (dir === "seek") return `按下北澤認得的節奏，把${year}年這兩週能搏的搏完`;
+      return `傳奇與野性並排，把${city}這兩週極端的帳扛過`;
+    }
+    if (drivers.includes("persona_athlete") || drivers.includes("persona_high_pressure")) {
+      if (dir === "endure") return `用體育場練出的身子硬扛${city}這兩週的高壓`;
+      if (dir === "help") return `還撐得住時，幫${who}把眼前能做的做完`;
+      return `身子還在，精神帳卻先見紅：把${year}年這兩週熬過`;
+    }
+    if (drivers.includes("persona_abyss_magnet")) {
+      if (dir === "seek") return `跟著磁場牽來的奇人走進${city}不可測的交錯`;
+      if (dir === "resist") return `不讓巷口怪人把你整條路拽歪，仍按自己的腳步走`;
+      return `深淵磁場這兩週還在，${city}的人與事都可能突然貼近`;
+    }
+    if (drivers.includes("persona_high_roller") || drivers.includes("persona_quit_ahead")) {
+      if (dir === "seek") return `把口袋裏能押的押進${city}這一局，贏了就收`;
+      if (dir === "resist" || dir === "guard") return `見好就收：這注夠了，不把底褲也押進去`;
+      return `按賭桌上認得的節奏，把${year}年這兩週能收的先收`;
+    }
+    if (drivers.includes("persona_brotherhood")) {
+      if (dir === "help") return `挺身替還肯喊你一聲的人擋這一回`;
+      if (dir === "resist") return `不為旁人一句閑話，丟下還在難處的同伴`;
+      return `義氣寫在走路的方式裏，先把${city}這兩週難處扛過`;
+    }
+    if (drivers.includes("persona_principled")) {
+      if (dir === "resist") return `不拿原則換一時面子，該拒的拒`;
+      return `按寫死的底線，把${city}這兩週能做完的做完`;
+    }
+    if (drivers.includes("persona_cat_keeper")) {
+      if (dir === "help" || dir === "seek") return `繞去${city}巷口或簷下，先把還認得你的貓安頓好`;
+      return `做事不忘留一碗水給跟過腳邊的貓`;
+    }
+    if (drivers.includes("persona_loyal_friend")) {
+      if (dir === "help") return `先幫還肯跟你說話的同伴把${city}這兩週難處扛過`;
+      return `朋友開口時，你把能讓的位子讓出去`;
+    }
+    if (drivers.includes("persona_faithful")) {
+      if (dir === "resist") return `不為旁人一句閑話，改掉已答應過的那句話`;
+      return `按當初答應的那一個人，把${year}年這兩週走完`;
+    }
+    if (drivers.includes("persona_gentle")) {
+      if (dir === "resist") return `不抬高聲氣，仍把不該交的名字按住`;
+      return `語氣放軟，把${city}這兩週能做完的先做完`;
+    }
+    if (dir === "endure" || dir === "seek") return `不嫌髒累，把${city}這兩週田事與雜活先做完`;
+    if (dir === "help") return `用還撐得住的力氣，幫${who}把眼前能做的做完`;
+    return `按吃得起苦的那一套，把${year}年這兩週熬過`;
+  }
   if (focus(["wealth"], /^wealth_/)) {
     if (dir === "seek") return `去${city}把能換成現錢或${food}的路走完`;
     if (dir === "guard") return `先守住這一期還沒被債收走的那一點`;

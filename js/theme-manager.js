@@ -3,6 +3,7 @@
  * Applies semantic CSS classes on #app / body. Never mutates layout geometry.
  */
 import { CLASS_SKINS, ERA_SKINS, STAGE_SKINS, VOCATION_SKINS } from "./data/ui-themes.js";
+import { specialThemeClassesOf } from "./persona-engine.js";
 
 const DEFAULT_THEME = Object.freeze({
   id: "archive-default",
@@ -190,6 +191,14 @@ export function applyTheme(state) {
   writeThemeClasses(app, theme, ready);
   writeDataset(body, theme);
   writeDataset(app, theme);
+  const extras = specialThemeClassesOf(state?.character || {});
+  for (const node of [body, app]) {
+    if (!node?.classList) continue;
+    for (const name of [...node.classList]) {
+      if (name.startsWith("preset-")) node.classList.remove(name);
+    }
+    for (const name of extras) node.classList.add(name);
+  }
   return theme;
 }
 

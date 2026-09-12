@@ -20,6 +20,7 @@ export const ROLE_LABEL = Object.freeze({
   sibling: "兄姊弟妹",
   spouse: "伴侶",
   rival: "對頭",
+  friend: "巷友",
   guardian: "監護人",
 });
 

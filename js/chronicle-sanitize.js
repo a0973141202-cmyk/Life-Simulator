@@ -141,6 +141,27 @@ function tagBeat(ctx = {}, options = []) {
   if (tags.some((tag) => tag.startsWith("trauma_"))) {
     return `舊傷口一碰就痛，${city}這兩週仍要按傷勢能做的事排活`;
   }
+  if (tags.some((tag) => tag.startsWith("persona_"))) {
+    if (tags.includes("persona_shimokita_legend") || tags.includes("persona_beast_instinct")) {
+      return `下北澤這兩週仍是窄巷與汽笛，危機來得極端，活路也來得極端`;
+    }
+    if (tags.includes("persona_athlete") || tags.includes("persona_high_pressure")) {
+      return `身子還撐得住，時代與階級的壓卻從精神帳上先扣`;
+    }
+    if (tags.includes("persona_abyss_magnet")) {
+      return `巷口奇人怪事仍容易被吸進他的路，命運交錯難測`;
+    }
+    if (tags.includes("persona_high_roller") || tags.includes("persona_quit_ahead")) {
+      return `${city}這兩週帳本與賭注並排，該搏的搏，該收的收`;
+    }
+    if (tags.includes("persona_brotherhood")) return `義氣這兩週還寫在走路的方式裏，朋友一喊就不先鬆手`;
+    if (tags.includes("persona_principled")) return `底線寫死，不正當的路他看都不看`;
+    if (tags.includes("persona_cat_keeper")) return `巷口簷下還有認得他的貓，飯與水都要先記一筆`;
+    if (tags.includes("persona_loyal_friend")) return `同伴的事他仍記在心上，比自己的閑話先到`;
+    if (tags.includes("persona_faithful")) return `答應過的人，他這兩週仍不改口`;
+    if (tags.includes("persona_gentle")) return `語氣不衝，庄口的人都還肯跟他說話`;
+    return `${city}這兩週，他仍按吃得起苦的那一套把活做完`;
+  }
   if (tags.some((tag) => tag.startsWith("household_"))) {
     return `屋裏仍有人動手、鎖門，或把飯扣下來`;
   }
