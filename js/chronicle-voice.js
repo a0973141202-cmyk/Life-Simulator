@@ -1,8 +1,9 @@
 /**
- * Weekly chronicle assembler. Lines are composed from the four-pillar
- * fact sheet — never sampled from sentence banks.
+ * Weekly chronicle assembler. One fortnight, one record.
+ * Birth / awakening dossiers stay in the journal file, not in 本期紀事.
  */
 import {
+  composeFortnightRecord,
   composePeriodChronicle,
   composeSituationLine,
   composeStageClause,
@@ -11,6 +12,8 @@ import { scanNarrativeFacts } from "./narrative-facts.js";
 import { rememberTriggeredEvent } from "./event-memory.js";
 import { getSettlementDisplayName } from "./settlements.js";
 import { publicTagLabel } from "./data/ui-zh.js";
+
+const PRIOR_LIFE_RE = /落地|第一次分得清|前兩週開始按|意識萌芽|一名[男女]嬰/;
 
 function ancestryLabel(ctx = {}) {
   const row = ctx.character?.bloodline?.ancestries?.[0];
@@ -52,7 +55,7 @@ export function pickFreshLine(rng, _pool, ctx = {}, character = null) {
 }
 
 export function chronicleOpener(rng, ctx) {
-  return composePeriodChronicle(rng, ctx);
+  return composeFortnightRecord(rng, ctx);
 }
 
 export function chronicleStageLine(rng, ctx) {
@@ -77,7 +80,8 @@ function chronicleFingerprint(text) {
   const compact = String(text || "").replace(/\s/g, "");
   if (/水腫/.test(compact) && /腿/.test(compact)) return "edema-body";
   if (/冷毛巾/.test(compact) && /燒/.test(compact)) return "fever-body";
-  return compact.slice(0, 20);
+  if (/時局/.test(compact)) return `pulse:${compact.slice(0, 22)}`;
+  return compact.slice(0, 22);
 }
 
 export function assembleWeeklyChronicle(rng, parts, ctx) {
@@ -87,13 +91,13 @@ export function assembleWeeklyChronicle(rng, parts, ctx) {
   const push = (part) => {
     const text = String(part || "").trim();
     if (!text) return;
+    if (PRIOR_LIFE_RE.test(text) && lines.length) return;
     const key = chronicleFingerprint(text);
     if (seen.has(key)) return;
     seen.add(key);
     lines.push(text);
   };
-  const openingLead = String(ctx.openingWeekLead || "").trim();
-  push(openingLead || composePeriodChronicle(rng, ctx));
+  push(composeFortnightRecord(rng, ctx));
   for (const part of parts || []) push(part);
   const joined = lines.filter(Boolean).join("\n");
   if (ctx.character && joined) {
@@ -102,4 +106,4 @@ export function assembleWeeklyChronicle(rng, parts, ctx) {
   return joined;
 }
 
-export { scanNarrativeFacts };
+export { composePeriodChronicle, scanNarrativeFacts };

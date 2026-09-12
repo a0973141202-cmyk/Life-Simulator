@@ -256,39 +256,31 @@ function renderEvent(state) {
   if (!root) return;
   root.replaceChildren();
 
-  const journal = state.journal || [];
-  for (const entry of journal) {
-    const clip = document.createElement("article");
-    clip.className = "clip clip-log";
-    const h = document.createElement("h3");
-    const time = document.createElement("time");
-    time.textContent = `${entry.year || "?"}年`;
-    h.append(time, document.createTextNode(sanitizePublicLine(entry.title || "紀錄") || "紀錄"));
-    clip.append(h);
-    const body = entry.text ? paragraph(entry.text) : null;
-    if (body) clip.append(body);
-    root.append(clip);
-  }
-
   const event = state.currentEvent || {};
   const lead = document.createElement("article");
   lead.className = "clip clip-lead";
   const kicker = document.createElement("p");
   kicker.className = "clip-kicker";
-  kicker.textContent = event.figure?.lockedTriad
-    ? "歷史人物現場"
-    : event.worldEvent?.lockedTriad
-      ? "時空事件"
-      : "本期紀事";
+  kicker.textContent = event.turningPoint?.lockedTriad
+    ? "人生轉折"
+    : event.figure?.lockedTriad
+      ? "歷史人物現場"
+      : event.worldEvent?.lockedTriad
+        ? "時空事件"
+        : "本期紀事";
   const title = document.createElement("h3");
   title.textContent = state.character
-    ? `${state.character.name} · ${state.stage?.label || ""} · ${state.time?.dateLabel || ""}`
+    ? `${state.character.name || "未名"} · ${state.stage?.label || ""}`
     : "尚未開檔";
   lead.append(kicker, title);
-  const narrative = String(event.narrative || state.message || "").split("\n").filter(Boolean);
+  const narrative = String(event.narrative || state.message || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line, index, all) => all.findIndex((row) => row.slice(0, 18) === line.slice(0, 18)) === index);
   const lines = narrative.map((line) => paragraph(line)).filter(Boolean);
   if (!lines.length) {
-    const empty = paragraph("本期沒有可公開的文字。");
+    const empty = paragraph(state.ready ? "本期沒有可公開的文字。" : "按下「開新檔案」。從五歲起，每一期只寫這兩週發生的事。");
     if (empty) lead.append(empty);
   } else {
     for (const line of lines) lead.append(line);
@@ -308,7 +300,7 @@ function renderEvent(state) {
     root.append(banner);
   }
 
-  scrollEventHistoryToLatest(root);
+  root.scrollTop = 0;
 }
 
 function renderChoices(state) {

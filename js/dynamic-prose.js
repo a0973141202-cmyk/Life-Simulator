@@ -96,6 +96,34 @@ export function composePlaceLine(facts) {
   return `${facts.year}年，${facts.place}`;
 }
 
+export function composeFortnightRecord(rng, ctx = {}) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  ctx.narrativeFacts = facts;
+  const current = ctx.currentTags || [];
+  const climate = current.includes("current_env_extreme_cold") || current.includes("current_env_polar_night")
+    ? `${facts.city}嚴寒，手指和腳趾發白`
+    : current.includes("current_env_extreme_heat")
+      ? `${facts.city}熱到中暑：口乾、頭暈`
+      : current.includes("current_env_monsoon")
+        ? "雨季，衣服乾不了，傷口和咳嗽加重"
+        : "";
+  const timeBit = facts.age ? `當事人 ${facts.age} 歲` : "";
+  const history = facts.pulseTitle
+    ? `時局：${facts.pulseTitle}`
+    : (facts.upheavalLabel ? `時局：${facts.upheavalLabel}` : "");
+  const text = joinSentences([
+    `${facts.year}年，${facts.place}${timeBit ? `。${timeBit}` : ""}`,
+    `${facts.classLabel}，住在${facts.housing}`,
+    climate || bodyClause(rng, facts),
+    facts.hungry || facts.edema ? `鍋裡常見的是${foodOf(facts)}` : "",
+    facts.householdHarsh ? "屋裏仍有人動手、鎖門或把飯扣下來" : "",
+    history,
+  ]);
+  const who = ctx.character;
+  if (who && text) rememberTextSnippet(who, { stem: text });
+  return text;
+}
+
 export function composePeriodChronicle(rng, ctx = {}) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   ctx.narrativeFacts = facts;

@@ -617,20 +617,15 @@ export function generateTurn(rng, state) {
   });
   const passive = weeklyPassive(rng, ctx);
 
-  ctx.openingWeekLead = consumeOpeningWeekLead(character);
-  const matrixLine = weaveVariatorLine(rng, ctx, character);
+  consumeOpeningWeekLead(character);
+  weaveVariatorLine(rng, ctx, character);
+  renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng);
   const narrative = scrubSemanticText(scrubPublicText(assembleWeeklyChronicle(rng, [
-    `${date.year}年${date.month}月${date.day}日`,
-    renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng),
     useLock && turningLocked && turningPoint ? `${turningPoint.title}。${turningPoint.journal}` : "",
     useLock && worldLocked ? renderWorldEvent(worldIncident, ctx, rng) : "",
     useLock && figureLocked ? renderFigureEncounter(figureIncident, ctx, rng) : "",
     useLock && adultLocked ? renderAdultIncident(adultIncident, ctx, rng) : "",
     useLock && schoolLocked ? renderSchoolIncident(schoolIncident, ctx, rng) : "",
-    sliceOfLife(rng, stage, era, ctx),
-    statusLine(character.stats, ctx.tags, ledger, ctx),
-    matrixLine,
-    ...passive.notes,
   ], ctx)), ctx);
 
   rememberTextSnippet(character, { stem: narrative });

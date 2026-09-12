@@ -280,6 +280,10 @@ def main() -> None:
         errors.append("narrative-facts missing scanNarrativeFacts four-pillar sheet")
     if "composePeriodChronicle" not in read(ROOT / "dynamic-prose.js"):
         errors.append("dynamic-prose missing composePeriodChronicle")
+    if "composeFortnightRecord" not in read(ROOT / "dynamic-prose.js"):
+        errors.append("dynamic-prose missing composeFortnightRecord")
+    if "PRIOR_LIFE_RE" not in read(ROOT / "chronicle-voice.js"):
+        errors.append("chronicle-voice must strip birth/awakening repeats from 本期紀事")
     if "fourPillarProse" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing fourPillarProse")
     if "dynamicComputationEngine" not in read(ROOT / "genesis.js"):
@@ -324,6 +328,8 @@ def main() -> None:
         errors.append("eventGenerator must start a text-history turn each week")
     if "weaveVariatorLine" not in read(ROOT / "eventGenerator.js"):
         errors.append("eventGenerator must weave year/place/class matrix lines")
+    if "composeFortnightRecord" not in read(ROOT / "chronicle-voice.js"):
+        errors.append("chronicle-voice must assemble the current fortnight only")
     if "globalTextDedup" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing globalTextDedup")
     if "attachLifeContext" not in read(ROOT / "eventGenerator.js"):

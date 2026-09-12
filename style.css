@@ -168,7 +168,8 @@ body {
 .layout {
   display: grid;
   grid-template-columns: minmax(280px, 34%) 1fr;
-  min-height: 70vh;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .rail,
@@ -194,8 +195,11 @@ body {
 
 .gazette,
 #event-panel {
-  padding: 0.9rem 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  padding: 0.9rem 1.2rem 1rem;
   background: rgba(255, 248, 230, 0.18);
 }
 
@@ -483,13 +487,14 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
 }
 
 .event-history {
-  min-height: 8rem;
-  max-height: min(42vh, 300px);
+  flex: 1 1 auto;
+  min-height: 16rem;
+  max-height: none;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   border-bottom: 2px solid var(--rule);
-  padding: 0.15rem 0.55rem 0.9rem 0;
+  padding: 0.15rem 0.35rem 0.85rem 0;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--stamp-soft) rgba(28, 20, 12, 0.12);
@@ -575,7 +580,9 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
 }
 
 .choices-wrap {
-  padding-top: 0.85rem;
+  flex: 0 0 auto;
+  padding-top: 0.75rem;
+  margin-top: 0;
 }
 
 .choices {
@@ -718,8 +725,8 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   }
 
   .event-history {
-    min-height: 7rem;
-    max-height: min(38vh, 300px);
+    min-height: 12rem;
+    max-height: none;
   }
 
   .week-label {
@@ -1074,5 +1081,5 @@ body[data-theme-vocation="underworld"] {
 }
 
 .paper {
-  overflow: hidden;
+  overflow: visible;
 }

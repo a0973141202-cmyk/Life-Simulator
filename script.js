@@ -13,7 +13,7 @@ export { composeExclusiveFill } from "./js/exclusive-fill.js";
 export { varyGenericNarrative, inferVariatorKind, maybeVaryChoice } from "./js/narrative-variator.js";
 export { VARIATOR_KINDS } from "./js/data/variator-lexicon.js";
 export { assembleWeeklyChronicle, chronicleOpener, pickFreshLine } from "./js/chronicle-voice.js";
-export { composePeriodChronicle, composeOpeningBirth, composeWorldBeat } from "./js/dynamic-prose.js";
+export { composePeriodChronicle, composeFortnightRecord, composeOpeningBirth, composeWorldBeat } from "./js/dynamic-prose.js";
 export { scanNarrativeFacts } from "./js/narrative-facts.js";
 export { attachLifeProgress, resolveLifeStage, progressAllowsAction } from "./js/life-stage-manager.js";
 export { LIFE_ARCS, TURNING_POINTS } from "./js/data/life-stage-catalog.js";
