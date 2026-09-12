@@ -316,6 +316,12 @@ def main() -> None:
         errors.append("dynamic-prose missing composeFortnightRecord definition")
     if "PRIOR_LIFE_RE" not in read(ROOT / "chronicle-voice.js"):
         errors.append("chronicle-voice must strip birth/awakening repeats from 本期紀事")
+    if "chronicleLineKey" not in read(ROOT / "chronicle-key.js"):
+        errors.append("chronicle-key missing shared chronicleLineKey")
+    if "chronicleLineKey" not in read(ROOT / "ui.js"):
+        errors.append("ui.js must de-dupe chronicle lines with chronicleLineKey")
+    if "scrollEventHistoryToLatest" not in read(ROOT / "ui.js") or "scrollTop = 0" in read(ROOT / "ui.js"):
+        errors.append("ui.js must pin event history to the latest entry")
     if "fourPillarProse" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing fourPillarProse")
     if "dynamicComputationEngine" not in read(ROOT / "genesis.js"):
@@ -997,6 +1003,8 @@ def main() -> None:
         errors.append("script.js must export event cooldown helpers")
     if "assembleWeeklyChronicle" not in script_js:
         errors.append("script.js must export chronicle variance helpers")
+    if "chronicleLineKey" not in script_js:
+        errors.append("script.js must export the shared chronicle de-dupe key")
     if "composeLifeResolution" not in script_js:
         errors.append("script.js must export the death resolution composer")
     if "TEXT_HISTORY_TURNS" not in script_js:
@@ -1123,6 +1131,16 @@ def main() -> None:
         errors.append("eventGenerator must pass ctx/rng into renderSchoolIncident")
     if "renderDailyNarrative(dailyTexture, useLock ? null : ctx, rng)" not in gen and "renderDailyNarrative(dailyTexture, factLocked ? null : ctx, rng)" not in gen:
         errors.append("eventGenerator must pass daily speech ctx only when the week is not fact-locked")
+    if "${date.year}年${date.month}月${date.day}日" not in gen:
+        errors.append("eventGenerator must stamp the fortnight date into 本期紀事")
+    if "sliceOfLife(rng, stage, era, ctx)" not in gen:
+        errors.append("eventGenerator must include sliceOfLife in the weekly chronicle")
+    if "statusLine(ctx.stats || character.stats, ctx.tags, ledger, ctx)" not in gen:
+        errors.append("eventGenerator must include statusLine in the weekly chronicle")
+    if "variatorLine" not in gen or "dailyLine" not in gen:
+        errors.append("eventGenerator must keep weaveVariatorLine and renderDailyNarrative in the chronicle")
+    if "...(passive.notes || [])" not in gen:
+        errors.append("eventGenerator must include weeklyPassive notes in the chronicle")
     if "culturalNameMatching: true" not in read(ROOT / "GameEngine.js"):
         errors.append("GameEngine sandbox missing culturalNameMatching")
     if "indigenousNaming: true" not in read(ROOT / "GameEngine.js"):

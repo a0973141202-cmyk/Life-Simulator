@@ -4,7 +4,7 @@
  * stat-health/sanity/reputation/crisis, tags-container, event-history, choices-container.
  */
 
-import { chronicleLineKey } from "./chronicle-voice.js";
+import { chronicleLineKey } from "./chronicle-key.js";
 import { SHOW_REPUTATION_UI } from "./data/ui-config.js";
 import { applyTheme } from "./theme-manager.js";
 import { describeSocialFeedback, socialStanding } from "./social-feedback.js";

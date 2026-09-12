@@ -9,10 +9,13 @@ import {
   composeStageClause,
   lockChronicleToClock,
 } from "./dynamic-prose.js";
+import { chronicleLineKey } from "./chronicle-key.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { rememberTriggeredEvent } from "./event-memory.js";
 import { getSettlementCountry, getSettlementDisplayName } from "./settlements.js";
 import { publicTagLabel } from "./data/ui-zh.js";
+
+export { chronicleLineKey };
 
 const PRIOR_LIFE_RE = /落地|第一次分得清|前兩週開始按|意識萌芽|一名[男女]嬰/;
 
@@ -79,15 +82,6 @@ export function dressChronicleParagraph(rng, text, ctx = {}) {
   const raw = String(text || "").trim();
   if (!raw) return composeSituationLine(rng, ctx);
   return raw;
-}
-
-export function chronicleLineKey(text) {
-  const compact = String(text || "").replace(/\s/g, "");
-  if (!compact) return "";
-  if (/水腫/.test(compact) && /腿/.test(compact)) return "edema-body";
-  if (/冷毛巾/.test(compact) && /燒/.test(compact)) return "fever-body";
-  if (/時局/.test(compact)) return `pulse:${compact.slice(0, 22)}`;
-  return compact.slice(0, 22);
 }
 
 function chronicleFingerprint(text) {

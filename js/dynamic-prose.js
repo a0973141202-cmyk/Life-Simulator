@@ -4,6 +4,7 @@
  */
 import { BODY_ATOM, FOOD_ATOM, FOOD_BY_REGION, LABOR_ATOM, THREAD_ATOM } from "./data/prose-atoms.js";
 import { FOOD_BY_CLASS } from "./data/variator-lexicon.js";
+import { chronicleLineKey } from "./chronicle-key.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
@@ -21,8 +22,8 @@ function joinSentences(parts) {
   for (const part of parts || []) {
     const text = scrubPublicText(String(part || "").trim());
     if (!text) continue;
-    const key = text.slice(0, 18);
-    if (seen.has(key)) continue;
+    const key = chronicleLineKey(text);
+    if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(/[。！？]$/.test(text) ? text : `${text}。`);
   }
