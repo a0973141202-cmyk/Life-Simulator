@@ -1,0 +1,27 @@
+import { eth } from "../ethnicity-factory.js";
+
+export const INNER_ASIA = [
+  eth("russian", "俄羅斯", "Russian", "common", ["russia"], ["cold_hands_craft", "oral_memory", "iron_shift"], "東歐森林草原農耕與高緯冬季。", "russian", { health: 2, mood: -1 }),
+  eth("ukrainian", "烏克蘭", "Ukrainian", "common", ["russia", "west"], ["steppe_endurance", "iron_shift", "oral_memory"], "黑土草原農耕。", "slavic", { health: 2 }),
+  eth("belarusian", "白俄羅斯", "Belarusian", "uncommon", ["russia", "west"], ["forest_path", "cold_hands_craft"], "波利西亞沼澤森林。", "slavic"),
+  eth("tatar", "韃靼", "Tatar", "uncommon", ["russia"], ["cold_hands_craft", "market_haggle", "steppe_endurance"], "伏爾加—克里米亞突厥語。", "tatar", { health: 1, wealth: 1 }),
+  eth("bashkir", "巴什基爾", "Bashkir", "rare", ["russia"], ["steppe_endurance", "horse_bond"], "南烏拉爾。", "tatar", { health: 2 }),
+  eth("chuvash", "楚瓦什", "Chuvash", "rare", ["russia"], ["river_read", "craft_finger"], "伏爾加中游。", "tatar"),
+  eth("yakut", "薩哈／雅庫特", "Sakha / Yakut", "rare", ["russia", "arctic"], ["polar_thermogenesis", "cold_hands_craft", "barometric_sense", "horse_bond"], "世界最冷定居區之一的牧馬與凍土生活。", "yakut", { health: 4 }),
+  eth("nenets", "涅涅茨", "Nenets", "rare", ["russia", "arctic"], ["polar_thermogenesis", "long_range_track", "reindeer_read", "barometric_sense"], "北極圈馴鹿遷移（與貿易站長期往來）。", "nenets", { health: 3, intelligence: 1 }),
+  eth("chukchi", "楚科奇", "Chukchi", "rare", ["russia", "arctic"], ["polar_thermogenesis", "ice_acoustic_read", "long_range_track", "sea_balance"], "楚科奇半島海獵與馴鹿。", "nenets", { health: 3 }),
+  eth("yupik", "尤皮克", "Yupik", "rare", ["arctic", "russia"], ["polar_thermogenesis", "sea_balance", "olfactory_tracking"], "白令海兩岸。", "inuit", { health: 3 }),
+  eth("unangan", "阿留申／烏納干", "Unangan / Aleut", "rare", ["arctic"], ["sea_balance", "storm_sea_read", "island_resource_map"], "阿留申群島（有對外貿易與教會接觸史）。", "inuit", { health: 2 }),
+  eth("komi", "科米", "Komi", "rare", ["russia"], ["forest_path", "cold_hands_craft"], "伯朝拉森林。", "komi", { health: 2 }),
+  eth("udmurt", "烏德穆爾特", "Udmurt", "rare", ["russia"], ["forest_path", "craft_finger"], "卡馬河。", "komi"),
+  eth("mari", "馬里", "Mari", "rare", ["russia"], ["forest_path", "oral_memory"], "伏爾加芬語。", "komi"),
+  eth("buryat", "布里亞特", "Buryat", "rare", ["russia", "mongolia"], ["steppe_endurance", "cold_hands_craft", "horse_bond"], "貝加爾湖草原。", "mongol", { health: 2 }),
+  eth("tuvan", "圖瓦", "Tuvan", "rare", ["russia"], ["steppe_endurance", "oral_memory", "horse_bond"], "薩彥嶺喉音與牧畜。", "mongol", { charm: 1, health: 2 }),
+  eth("kalmyk", "卡爾梅克", "Kalmyk", "rare", ["russia"], ["steppe_endurance", "horse_bond"], "伏爾加下游衛拉特蒙古。", "mongol"),
+  eth("chechen", "車臣", "Chechen", "uncommon", ["russia"], ["mountain_foot", "conflict_stillness", "clan_map"], "高加索山地。", "chechen", { health: 2 }),
+  eth("ingush", "印古什", "Ingush", "rare", ["russia"], ["mountain_foot", "clan_map"], "高加索。", "chechen", { health: 1 }),
+  eth("circassian", "切爾克斯／阿迪格", "Circassian", "rare", ["russia", "middle_east"], ["mountain_foot", "diaspora_pack", "horse_bond"], "高加索與中東離散。", "circassian", { health: 2, charm: 1 }),
+  eth("georgian", "喬治亞", "Georgian", "uncommon", ["russia", "middle_east"], ["mountain_foot", "craft_finger", "oral_memory"], "高加索酒與山地。", "georgian", { charm: 2 }),
+  eth("armenian", "亞美尼亞", "Armenian", "uncommon", ["middle_east", "west", "russia"], ["diaspora_pack", "craft_finger", "oral_memory", "mountain_foot"], "高地農耕與全球離散。", "armenian", { intelligence: 2, charm: 1 }),
+  eth("azerbaijani", "亞塞拜然", "Azerbaijani", "uncommon", ["middle_east", "russia"], ["market_haggle", "steppe_endurance"], "裡海西岸。", "turkish", { charm: 1 }),
+];

@@ -1,0 +1,27 @@
+import { eth } from "../ethnicity-factory.js";
+
+export const SOUTH_ASIA = [
+  eth("hindi", "北印度／印地", "Hindi belt", "common", ["south_asia"], ["urban_crowd_read", "clan_map", "spice_gut", "heat_slender_build"], "恆河平原農耕與種姓職業專化。", "hindi", { intelligence: 1, charm: 1 }),
+  eth("bengali", "孟加拉", "Bengali", "common", ["south_asia"], ["river_read", "oral_memory", "craft_finger", "humidity_pace"], "恆河—布拉馬普特拉三角洲。", "bengali", { intelligence: 2, charm: 1 }),
+  eth("punjabi", "旁遮普", "Punjabi", "common", ["south_asia"], ["steppe_endurance", "market_haggle", "iron_shift", "lactase_persistence"], "五河農牧。", "punjabi", { health: 2, charm: 1 }),
+  eth("marathi", "馬拉地", "Marathi", "common", ["south_asia"], ["urban_crowd_read", "iron_shift", "mountain_foot"], "德干西緣。", "hindi", { intelligence: 1 }),
+  eth("gujarati", "古吉拉特", "Gujarati", "uncommon", ["south_asia"], ["market_haggle", "diaspora_pack", "silk_road_bargain"], "西印度商幫與海外離散。", "hindi", { wealth: 3, charm: 1 }),
+  eth("telugu", "泰盧固", "Telugu", "common", ["south_asia"], ["spice_gut", "urban_crowd_read"], "德干高原東部。", "tamil"),
+  eth("kannada", "卡納達", "Kannada", "uncommon", ["south_asia"], ["spice_gut", "craft_finger"], "卡納塔克。", "tamil"),
+  eth("malayalam", "馬拉雅拉姆", "Malayali", "uncommon", ["south_asia"], ["spice_gut", "sea_balance", "humidity_pace"], "喀拉拉海岸。", "tamil", { intelligence: 1 }),
+  eth("odia", "奧里亞", "Odia", "uncommon", ["south_asia"], ["river_read", "humidity_pace"], "奧迪薩沿海。", "hindi"),
+  eth("assamese", "阿薩姆", "Assamese", "uncommon", ["south_asia"], ["river_read", "humidity_pace"], "布拉馬普特拉河谷。", "bengali"),
+  eth("nepali", "尼泊爾／廓爾喀", "Nepali / Gorkha", "uncommon", ["south_asia"], ["altitude_epas1", "mountain_foot", "iron_shift"], "喜馬拉雅中段。", "hindi", { health: 3 }),
+  eth("sinhalese", "僧伽羅", "Sinhalese", "uncommon", ["south_asia"], ["humidity_pace", "faith_spine", "island_resource_map"], "斯里蘭卡。", "tamil", { mood: 1 }),
+  eth("urdu", "烏爾都／穆哈吉爾", "Urdu / Muhajir", "common", ["south_asia"], ["diaspora_pack", "urban_crowd_read", "oral_memory"], "分治遷徙城市社群。", "urdu", { intelligence: 2, charm: 1 }),
+  eth("pashtun", "普什圖", "Pashtun", "uncommon", ["south_asia"], ["long_range_track", "conflict_stillness", "clan_map", "mountain_foot"], "阿富汗—巴基斯坦山地部落。", "persian", { health: 3, charm: 1 }),
+  eth("baloch", "俾路支", "Baloch", "rare", ["south_asia", "middle_east"], ["desert_thrift", "camel_range", "long_range_track"], "俾路支斯坦旱地。", "persian", { health: 2 }),
+  eth("sindhi", "信德", "Sindhi", "uncommon", ["south_asia"], ["desert_thrift", "market_haggle", "river_read"], "印度河下游。", "hindi", { wealth: 1 }),
+  eth("kashmiri", "喀什米爾", "Kashmiri", "rare", ["south_asia"], ["altitude_epas1", "craft_finger", "mountain_foot"], "喀什米爾谷地。", "persian", { intelligence: 1, health: 1 }),
+  eth("hazara", "哈扎拉", "Hazara", "rare", ["south_asia"], ["altitude_epas1", "conflict_stillness", "diaspora_pack"], "哈扎拉賈特高地。", "persian", { health: 2, mood: 1 }),
+  eth("parsi", "帕西", "Parsi", "rare", ["south_asia"], ["market_haggle", "faith_spine", "multilingual_ear"], "印度瑣羅亞斯德離散商人。", "persian", { wealth: 3, intelligence: 2 }),
+  eth("punjabi_sikh", "錫克旁遮普", "Sikh Punjabi", "uncommon", ["south_asia"], ["iron_shift", "steppe_endurance", "clan_map"], "旁遮普錫克社群。", "punjabi", { health: 2, charm: 1 }),
+  eth("tamil_sri_lanka", "斯里蘭卡泰米爾", "Sri Lankan Tamil", "uncommon", ["south_asia"], ["spice_gut", "diaspora_pack", "conflict_stillness"], "賈夫納與種植園泰米爾。", "tamil", { intelligence: 1 }),
+  eth("maldivian", "馬爾地夫", "Maldivian / Dhivehi", "rare", ["south_asia"], ["sea_balance", "island_resource_map", "star_path_nav"], "環礁伊斯蘭航海社會。", "arabic", { health: 1 }),
+  eth("bhutia", "不丹／錫金藏緬", "Bhutia", "rare", ["south_asia"], ["altitude_epas1", "mountain_foot", "faith_spine"], "東喜馬拉雅。", "tibetan", { health: 3 }),
+];

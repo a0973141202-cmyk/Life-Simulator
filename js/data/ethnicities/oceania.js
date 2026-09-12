@@ -1,0 +1,26 @@
+import { eth } from "../ethnicity-factory.js";
+
+export const OCEANIA = [
+  eth("aboriginal_australian", "澳洲原住民（廣義）", "Aboriginal Australian", "rare", ["oceania"], ["desert_wayfind", "long_range_track", "olfactory_tracking", "visual_spatial_memory", "oral_memory"], "乾燥大陸的導向、追蹤與口傳地理；僅含與定居社會有往來的社群。", "aboriginal", { health: 3, intelligence: 2 }),
+  eth("yolngu", "優爾恩古", "Yolngu", "rare", ["oceania"], ["sea_balance", "visual_spatial_memory", "oral_memory"], "阿納姆地東北（長期有傳教與貿易接觸）。", "aboriginal", { intelligence: 2 }),
+  eth("arrernte", "阿蘭達", "Arrernte", "rare", ["oceania"], ["desert_wayfind", "visual_spatial_memory", "barometric_sense"], "澳洲中部沙漠。", "aboriginal", { intelligence: 2, health: 1 }),
+  eth("noongar", "努加", "Noongar", "rare", ["oceania"], ["forest_path", "sea_balance", "oral_memory"], "西南澳洲。", "aboriginal"),
+  eth("torres_strait", "托雷斯海峽島民", "Torres Strait Islander", "rare", ["oceania"], ["sea_balance", "star_path_nav", "island_resource_map"], "澳洲—新幾內亞之間的航海島民。", "polynesian", { health: 2, intelligence: 1 }),
+  eth("maori", "毛利", "Māori", "uncommon", ["oceania"], ["sea_balance", "oral_memory", "conflict_stillness", "star_path_nav"], "新西蘭玻里尼西亞。", "maori", { health: 3, charm: 2 }),
+  eth("samoan", "薩摩亞", "Samoan", "uncommon", ["oceania"], ["sea_balance", "clan_map", "island_resource_map"], "薩摩亞群島。", "samoan", { health: 3, charm: 1 }),
+  eth("tongan", "東加", "Tongan", "uncommon", ["oceania"], ["sea_balance", "clan_map", "star_path_nav"], "東加王國。", "polynesian", { health: 3 }),
+  eth("fijian", "斐濟", "Fijian", "uncommon", ["oceania"], ["sea_balance", "humidity_pace", "island_resource_map"], "美拉尼西亞—玻里尼西亞交界。", "polynesian", { health: 2 }),
+  eth("hawaiian", "夏威夷", "Kanaka Maoli", "rare", ["oceania", "west"], ["sea_balance", "star_path_nav", "island_resource_map"], "夏威夷群島。", "hawaiian", { health: 2, charm: 1 }),
+  eth("tahitian", "大溪地", "Tahitian", "rare", ["oceania"], ["sea_balance", "star_path_nav", "island_resource_map"], "社會群島。", "polynesian", { charm: 2 }),
+  eth("marshallese", "馬紹爾", "Marshallese", "rare", ["oceania"], ["sea_balance", "star_path_nav", "island_resource_map"], "密克羅尼西亞環礁導航。", "polynesian", { intelligence: 2 }),
+  eth("chamorro", "查莫羅", "Chamorro", "rare", ["oceania"], ["sea_balance", "island_resource_map"], "馬里亞納群島。", "chamorro", { health: 1 }),
+  eth("papua_highlander", "巴布亞高地（接觸社群）", "Papuan Highlander", "rare", ["oceania"], ["mountain_foot", "humidity_pace", "forest_path"], "新幾內亞高地已與市鎮、農場往來的社群，不含封閉隔離族。", "papua", { health: 3 }),
+  eth("melanesian_solomon", "所羅門群島", "Solomon Islander", "rare", ["oceania"], ["sea_balance", "humidity_pace", "island_resource_map"], "美拉尼西亞航海。", "polynesian", { health: 2 }),
+  eth("kanak", "卡納克", "Kanak", "rare", ["oceania"], ["sea_balance", "forest_path"], "新喀里多尼亞。", "kanak", { health: 1 }),
+  eth("cook_islands", "庫克群島", "Cook Islander", "rare", ["oceania"], ["sea_balance", "star_path_nav", "island_resource_map"], "玻里尼西亞中部（有航運接觸）。", "polynesian", { health: 2 }),
+  eth("niuean", "紐埃", "Niuean", "rare", ["oceania"], ["sea_balance", "island_resource_map"], "玻里尼西亞隆起環礁。", "polynesian"),
+  eth("tuvaluan", "吐瓦魯", "Tuvaluan", "rare", ["oceania"], ["sea_balance", "island_resource_map", "star_path_nav"], "密克羅尼西亞—玻里尼西亞環礁（有對外交通）。", "polynesian", { health: 1 }),
+  eth("i_kiribati", "吉里巴斯", "I-Kiribati", "rare", ["oceania"], ["sea_balance", "star_path_nav", "island_resource_map"], "吉爾伯特群島航海。", "polynesian", { intelligence: 1 }),
+  eth("palauan", "帛琉", "Palauan", "rare", ["oceania"], ["sea_balance", "island_resource_map"], "西密克羅尼西亞。", "polynesian"),
+  eth("maori_cook", "庫克群島毛利", "Cook Islands Māori", "rare", ["oceania"], ["sea_balance", "oral_memory"], "與毛利同屬東玻里尼西亞。", "maori"),
+];

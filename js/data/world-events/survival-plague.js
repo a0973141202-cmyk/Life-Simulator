@@ -1,0 +1,128 @@
+import { worldEvent as we } from "./schema.js";
+
+/**
+ * Epidemic / quarantine facts. Bound to mortality-history shock ids so a 2020 queue
+ * cannot appear in 1933, and SARS cannot appear outside its mapped regions/year.
+ */
+
+export const WORLD_PLAGUE_EVENTS = [
+  we({
+    id: "we_flu_1920_tail",
+    kind: "survival",
+    age: [5, 90],
+    year: [1920, 1920],
+    historyIds: ["flu_1920_tail"],
+    fact: "這一週，街上仍有人戴著從上一次大流感留下來的布口罩。學校或工廠用缺席名單代替通知。有人家門被標。醫生若還出診，出診本身成為傳播路徑的謠言。",
+    procedure: "1918 年那一波的尾巴還在 1920 年的日曆上。它不是「已成為歷史的課文」。",
+    options: [
+      {
+        stance: "endure",
+        text: "少串門，按家裏的辦法把這一週過完",
+        effects: { mood: -2, health: -1, charm: -1 },
+        addTags: ["world_plague_queue"],
+        hooks: ["health", "hide"],
+        followUps: ["你少被看見。缺席對學業或工錢收費。病若要來，門閂不是保證。"],
+        risk: { chance: 0.14, effects: { health: -8 }, text: "家裏已有人咳嗽。隔離在一間屋裏不成立。" },
+      },
+      {
+        stance: "care",
+        text: "仍去看病人、送湯或代替缺席的人手",
+        effects: { health: -3, charm: 2, mood: -1, wealth: -1 },
+        addTags: ["world_plague_queue"],
+        hooks: ["health", "social"],
+        followUps: ["有人得到照顧。你的呼吸與那間屋共用過一段時間。接觸會在後面的日子裡繼續收費。"],
+        risk: { chance: 0.32, effects: { health: -12 }, text: "熱與咳落到你身上。1918 的尾波不認年齡特權。" },
+      },
+      {
+        stance: "mark",
+        dark: true,
+        text: "把咳嗽的鄰居說出去，換自己這戶比較不像被標的那一家",
+        effects: { charm: -2, mood: -2, intelligence: 1 },
+        addTags: ["world_informant", "world_epidemic_mark"],
+        hooks: ["official", "health"],
+        followUps: ["門上的紙換了地址。被標的那一戶會記得是誰的嘴。"],
+        consequence: { trust: -8, opinion: -4, heat: 3, eventLabel: "疫季檢舉" },
+        risk: { chance: 0.2, effects: { charm: -4, mood: -3 }, text: "檢舉回流：有人也開始說你家。" },
+      },
+    ],
+  }),
+  we({
+    id: "we_sars_gate",
+    kind: "survival",
+    age: [5, 90],
+    year: [2003, 2003],
+    historyIds: ["sars_2003"],
+    regions: ["china", "hongkong", "taiwan", "se_asia"],
+    fact: "這一週，體溫槍出現在校門、碼頭或社區入口。口罩從藥房消失。有樓層或有病房被封閉的消息比官方說明快。有人開始不坐電梯。",
+    procedure: "2003 年的這一種熱不是普通感冒的別名。它按接觸與建築傳播。",
+    options: [
+      {
+        stance: "endure",
+        text: "接受量體溫與缺課缺工，少去密閉的公共空間",
+        effects: { mood: -2, health: -1, wealth: -1 },
+        addTags: ["world_plague_queue"],
+        hooks: ["health", "hide"],
+        followUps: ["你少出現。紀錄上多了幾次正常體溫。經濟與功課的缺口另計。"],
+      },
+      {
+        stance: "queue",
+        text: "仍去醫院、藥房或車站排隊，因為家裏有人需要被看見",
+        effects: { health: -2, charm: 1, mood: -2, wealth: -1 },
+        addTags: ["world_plague_queue", "world_epidemic_mark"],
+        hooks: ["health", "official"],
+        followUps: ["隊伍裡的距離是被喊出來的。你的名字可能進了接觸者的口頭名單。"],
+        risk: { chance: 0.24, effects: { health: -10 }, text: "隊列本身就是接觸。熱後來才量到。" },
+      },
+      {
+        stance: "hide_fever",
+        dark: true,
+        text: "把家裡的熱當成感冒，避開量體溫的門，以免被封或被標",
+        effects: { health: -2, wealth: 1, charm: -1, mood: -1 },
+        addTags: ["world_epidemic_mark", "world_looter"],
+        hooks: ["hide", "health", "official"],
+        followUps: ["門暫時沒被貼。接觸的半徑仍按物理擴大。被發現時，罰比發燒重。"],
+        consequence: { heat: 6, trust: -6, infamy: 3, eventLabel: "隱熱" },
+        risk: { chance: 0.3, effects: { health: -9, charm: -4 }, text: "被門崗或鄰居拆穿。隔離從你家開始。" },
+      },
+    ],
+  }),
+  we({
+    id: "we_covid_queue",
+    kind: "survival",
+    age: [5, 90],
+    year: [2020, 2022],
+    historyIds: ["covid_2020"],
+    fact: "這一週，口罩、酒精與部分食物從貨架消失。學校改成停課、線上或體溫閘門。有人失去工時。有人把病毒說成別的名字。訃聞在有的城市變密，在有的城市被要求不要密集發佈。",
+    procedure: "這是 2020–2022 年的全球基礎設施故障。它不是未來年份的道具。",
+    options: [
+      {
+        stance: "endure",
+        text: "按當時當地的規定排隊、量體溫、少串門",
+        effects: { mood: -2, health: -1, wealth: -1, charm: -1 },
+        addTags: ["world_plague_queue"],
+        hooks: ["health", "hide", "official"],
+        followUps: ["你少被看見。工時或功課變成螢幕或空白。規定若明天改，身體不會自動跟上。"],
+      },
+      {
+        stance: "care",
+        text: "仍去看需要被照顧的人，或替家裏排隊買已經不一定有的東西",
+        effects: { health: -2, charm: 1, mood: -2, wealth: -1 },
+        addTags: ["world_plague_queue"],
+        hooks: ["health", "family", "social"],
+        followUps: ["有人得到物資或陪伴。隊列與病房都是接觸面。沒有人為此發獎狀。"],
+        risk: { chance: 0.22, effects: { health: -9 }, text: "熱與咳按接觸半徑收費。年齡不是護身符。" },
+      },
+      {
+        stance: "defy",
+        dark: true,
+        text: "把限制當成可以穿過的繩：不戴、不報、或去不該去的聚集",
+        effects: { charm: 1, mood: 1, health: -2, intelligence: -1 },
+        addTags: ["world_epidemic_mark"],
+        hooks: ["social", "health"],
+        followUps: ["你得到了一種不被規定碰到的短時間。罰單、指認或傳染的帳可能晚到。"],
+        consequence: { heat: 5, trust: -4, opinion: -3, eventLabel: "疫規穿越" },
+        risk: { chance: 0.28, effects: { health: -11, wealth: -2 }, text: "查核或疾病先於你的不服從理論。" },
+      },
+    ],
+  }),
+];

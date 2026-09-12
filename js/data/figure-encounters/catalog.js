@@ -1,0 +1,9 @@
+import { FIGURE_ENCOUNTER_TEMPLATES } from "./templates.js";
+import { FIGURE_ENCOUNTER_NAMED } from "./named.js";
+
+export const FIGURE_ENCOUNTERS = Object.freeze([
+  ...FIGURE_ENCOUNTER_NAMED,
+  ...FIGURE_ENCOUNTER_TEMPLATES,
+]);
+
+export { FIGURE_ENCOUNTER_TEMPLATES, FIGURE_ENCOUNTER_NAMED };

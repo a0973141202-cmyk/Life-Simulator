@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>世紀檔案 · 1920–2025</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="desk">
+    <div class="paper" id="app">
+      <div class="theme-ornaments" aria-hidden="true">
+        <span class="ornament ornament-tl"></span>
+        <span class="ornament ornament-tr"></span>
+        <span class="ornament ornament-bl"></span>
+        <span class="ornament ornament-br"></span>
+        <span class="ornament-rule"></span>
+      </div>
+      <header class="masthead">
+        <p class="masthead-kicker">機密人事檔案 · 禁止外傳</p>
+        <div class="masthead-row">
+          <h1 class="masthead-title">世紀人事檔案</h1>
+        </div>
+        <div class="masthead-meta">
+          <p class="file-no">檔案號 <span id="file-seed">—</span></p>
+          <p class="file-subject">當事人 <span id="character-name">尚未開檔</span></p>
+          <p class="file-era">
+            <span id="era-name">—</span> · <span id="life-stage">—</span>
+            <span id="life-progress" class="life-progress"></span>
+          </p>
+          <button type="button" class="btn-file" id="btn-new-file">開新檔案</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside id="status-panel" class="rail status-panel" aria-label="人事狀態欄">
+          <section class="plate identity-plate">
+            <h2 class="plate-title">時空座標</h2>
+            <dl class="coords">
+              <div class="coord">
+                <dt>年份</dt>
+                <dd id="current-year">—</dd>
+              </div>
+              <div class="coord">
+                <dt>年齡</dt>
+                <dd id="current-age">—</dd>
+              </div>
+              <div class="coord coord-wide">
+                <dt>地理位置</dt>
+                <dd id="current-location">—</dd>
+              </div>
+              <div class="coord coord-wide">
+                <dt>環境／區域</dt>
+                <dd id="current-environment">—</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="plate vitals-plate" aria-label="體徵與危機">
+            <h2 class="plate-title" id="vitals-title">體徵與危機</h2>
+            <ul class="meters">
+              <li class="meter" data-stat="health">
+                <span class="meter-label">體格</span>
+                <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
+                <span class="meter-value" id="stat-health">—</span>
+              </li>
+              <li class="meter" data-stat="sanity">
+                <span class="meter-label">神智</span>
+                <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
+                <span class="meter-value" id="stat-sanity">—</span>
+              </li>
+              <li class="meter" data-stat="reputation" hidden>
+                <span class="meter-label">聲望</span>
+                <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
+                <span class="meter-value" id="stat-reputation">—</span>
+              </li>
+              <li class="meter" data-stat="crisis">
+                <span class="meter-label">危機</span>
+                <span class="meter-track" aria-hidden="true"><i class="meter-fill"></i></span>
+                <span class="meter-value" id="stat-crisis">—</span>
+              </li>
+            </ul>
+          </section>
+
+          <aside
+            id="crisis-alert"
+            class="crisis-alert"
+            data-level="idle"
+            aria-live="polite"
+            aria-label="檔案警示"
+          >
+            <span class="crisis-stamp">檔案警示</span>
+            <p id="crisis-alert-text">這兩週還沒有人把你的名字寫進公開清算。</p>
+            <p class="crisis-sub" id="crisis-alert-sub">街對你的態度寫在這裡。</p>
+          </aside>
+
+          <section class="plate tags-plate">
+            <h2 class="plate-title">標籤卷宗</h2>
+            <p class="plate-note">創傷、出路、時代與人物接觸裡，街坊能叫得出來的記號。</p>
+            <div id="tags-container" class="tags" aria-live="polite"></div>
+          </section>
+
+          <section
+            id="figure-log"
+            class="plate figure-log"
+            aria-labelledby="figure-log-title"
+          >
+            <h2 class="plate-title" id="figure-log-title">歷史人物接觸紀錄</h2>
+            <p class="plate-note">交集、結盟、敵對，以及這條街之後開始跟以前不一樣的說法。</p>
+            <p id="figure-log-status" class="figure-log-status">尚無公開交集。人物只在其發跡窗口與地理範圍內入場。</p>
+            <ul id="figure-log-list" class="figure-log-list"></ul>
+            <p id="figure-inertia" class="figure-inertia" hidden>歷史慣性 0</p>
+          </section>
+        </aside>
+
+        <main id="event-panel" class="gazette event-panel" aria-label="事件日誌與抉擇">
+          <section class="gazette-head">
+            <h2>本期紀事</h2>
+            <p id="week-label" class="week-label">等待開檔</p>
+          </section>
+          <div
+            id="event-history"
+            class="event-history"
+            role="log"
+            tabindex="0"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label="人事日誌"
+          >
+            <article class="clip clip-lead">
+              <p class="clip-kicker">封面</p>
+              <h3>尚未開檔</h3>
+              <p>按下「開新檔案」。從五歲自我意識萌芽的那一期起，這份人生會被一期期寫下去，直到死亡、毀滅，或一百二十歲。</p>
+            </article>
+          </div>
+          <section class="choices-wrap" aria-label="本期抉擇">
+            <h2 class="choices-title">本期抉擇</h2>
+            <div id="choices-container" class="choices" role="group"></div>
+          </section>
+        </main>
+      </div>
+
+      <footer class="colophon">
+        <p>本檔只記下這兩週發生的事，以及你能走的路。干預歷史的人，會被國家機器與權力集團記住。</p>
+      </footer>
+    </div>
+  </div>
+
+  <div id="death-resolution" class="death-resolution" hidden aria-hidden="true">
+    <div class="death-resolution-sheet" role="dialog" aria-modal="true" aria-labelledby="death-resolution-title">
+      <p class="death-kicker" id="death-kicker">當事人已死</p>
+      <h2 id="death-resolution-title">死亡證明</h2>
+      <dl class="death-facts">
+        <div class="death-fact">
+          <dt>姓名</dt>
+          <dd id="death-name">—</dd>
+        </div>
+        <div class="death-fact">
+          <dt>出生地</dt>
+          <dd id="death-birthplace">—</dd>
+        </div>
+        <div class="death-fact">
+          <dt>在世年歲</dt>
+          <dd id="death-age">—</dd>
+        </div>
+        <div class="death-fact">
+          <dt>結算年份</dt>
+          <dd id="death-year">—</dd>
+        </div>
+        <div class="death-fact death-fact-wide">
+          <dt>死因／結算</dt>
+          <dd id="death-cause">—</dd>
+        </div>
+      </dl>
+      <p class="death-era" id="death-era"></p>
+      <button type="button" class="btn-rebirth" id="btn-rebirth">重新投胎（開新局）</button>
+    </div>
+  </div>
+  <noscript>
+    <p class="noscript">本檔案庫需要啟用 JavaScript 才能開檔與推進期次。</p>
+  </noscript>
+  <script>
+    // #region agent log
+    (function () {
+      const ingest = (message, data, hypothesisId) => {
+        fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7687e1" },
+          body: JSON.stringify({
+            sessionId: "7687e1",
+            location: "index.html:inline",
+            message,
+            data,
+            timestamp: Date.now(),
+            hypothesisId,
+          }),
+        }).catch(() => {});
+      };
+      ingest("html-before-module", {
+        readyState: document.readyState,
+        hasApp: Boolean(document.getElementById("app")),
+        hasChoices: Boolean(document.getElementById("choices-container")),
+        hasYear: Boolean(document.getElementById("current-year")),
+        hasHealth: Boolean(document.getElementById("stat-health")),
+        hasTags: Boolean(document.getElementById("tags-container")),
+      }, "B");
+      window.addEventListener("error", (event) => {
+        ingest("window-error", {
+          msg: String(event.message || ""),
+          file: String(event.filename || ""),
+          line: event.lineno || 0,
+          col: event.colno || 0,
+        }, "A");
+      });
+      window.addEventListener("unhandledrejection", (event) => {
+        ingest("unhandledrejection", {
+          msg: String(event.reason && (event.reason.message || event.reason) || event.reason),
+        }, "A");
+      });
+    })();
+    // #endregion
+  </script>
+  <script type="module" src="./script.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+import { YEAR_MAX } from "../../constants.js";
+import { s, countryBand as c } from "./schema.js";
+
+export const OCEANIA = [
+  s({ id: "sydney", name: "雪梨", kind: "port", region: "oceania", country: "澳洲", climate: "temperate", weight: 4, ethnicities: ["english", "irish", "aboriginal_australian", "han"], tags: ["口岸", "海灣"], flavor: "港口、砂岩與被改寫的岸名" }),
+  s({ id: "melbourne", name: "墨爾本", kind: "city", region: "oceania", country: "澳洲", climate: "temperate", weight: 4, ethnicities: ["english", "irish", "italian", "greek", "han"], tags: ["淘金餘波", "南半球"], flavor: "巷弄咖啡館與移民碼頭養出來的南半球城市" }),
+  s({ id: "coober_pedy", name: "庫伯佩迪", kind: "underground", region: "oceania", country: "澳洲", climate: "arid", weight: 2, ethnicities: ["english", "aboriginal_australian", "greek", "italian"], tags: ["地下", "蛋白石", "沙漠"], flavor: "為了躲沙漠熱浪，人把家挖進地裡。門牌釘在洞穴口" }),
+  s({ id: "auckland", name: "奧克蘭", kind: "port", region: "oceania", country: "紐西蘭", climate: "temperate", weight: 3, ethnicities: ["english", "maori", "samoan"], tags: ["火山島", "口岸"], flavor: "火山丘與海灣之間，毛利地名比殖民建築更老" }),
+  s({ id: "honolulu", name: "檀香山", kind: "port", region: "oceania", countries: [c(1920, 1958, "美國（夏威夷領地）／美國"), c(1959, YEAR_MAX, "美國（夏威夷）")], country: "美國（夏威夷）", climate: "tropical", weight: 3, ethnicities: ["hawaiian", "english", "japanese", "han"], tags: ["口岸", "火山島"], flavor: "太平洋航線上的開放港口，不是與世隔絕的孤島。貿易風終年不停" }),
+  s({ id: "dunedin", name: "但尼丁", kind: "city", region: "oceania", country: "紐西蘭", climate: "temperate", weight: 2, ethnicities: ["english", "scottish", "maori"], tags: ["南島", "南半球"], flavor: "南島東岸的蘇格蘭影子城市，七月的寒意來自南極而非北極" }),
+
+  s({ id: "wellington", name: "威靈頓", kind: "port", region: "oceania", country: "紐西蘭", climate: "temperate", weight: 3, ethnicities: ["english", "maori"], tags: ["首都", "風"], flavor: "風比議會更先佔領港口。毛利地名寫在同一塊路牌上", lat: -41.29, lon: 174.78 }),
+  s({ id: "christchurch", name: "基督城", kind: "city", region: "oceania", country: "紐西蘭", climate: "temperate", weight: 3, ethnicities: ["english", "maori"], tags: ["南島", "平原"], flavor: "平原上的花園城市。地震比重建計畫更準時", lat: -43.53, lon: 172.64 }),
+  s({ id: "perth", name: "伯斯", kind: "port", region: "oceania", country: "澳洲", climate: "mediterranean", weight: 3, ethnicities: ["english", "noongar", "irish"], tags: ["西澳", "河口"], flavor: "印度洋岸的孤立首府。努加人的河名比金礦更老", lat: -31.95, lon: 115.86 }),
+  s({ id: "adelaide", name: "阿得雷德", kind: "city", region: "oceania", country: "澳洲", climate: "mediterranean", weight: 3, ethnicities: ["english", "german", "italian"], tags: ["規劃都市", "南澳"], flavor: "按方格畫出來的城。葡萄園比金礦更耐久", lat: -34.93, lon: 138.60 }),
+  s({ id: "brisbane", name: "布里斯本", kind: "city", region: "oceania", country: "澳洲", climate: "subtropical", weight: 3, ethnicities: ["english", "irish", "aboriginal_australian"], tags: ["河流", "亞熱帶"], flavor: "河把城市彎成幾段。洪水比颶風更常改寫低地", lat: -27.47, lon: 153.03 }),
+  s({ id: "darwin", name: "達爾文", kind: "port", region: "oceania", country: "澳洲", climate: "tropical", weight: 2, ethnicities: ["english", "aboriginal_australian", "han"], tags: ["北領地", "口岸"], flavor: "1942 年被轟炸的港口。季風比聯邦更早決定一年怎麼過", lat: -12.46, lon: 130.84 }),
+  s({ id: "alice_springs", name: "愛麗斯泉", kind: "city", region: "oceania", country: "澳洲", climate: "arid", weight: 1, ethnicities: ["arrernte", "english"], tags: ["內陸", "沙漠"], flavor: "阿蘭達人的泉水被建成電報站。沙漠比鐵軌更寬", lat: -23.70, lon: 133.88 }),
+  s({ id: "suva", name: "蘇瓦", kind: "port", region: "oceania", countries: [c(1920, 1969, "英屬斐濟／斐濟"), c(1970, YEAR_MAX, "斐濟")], country: "斐濟", climate: "tropical", weight: 2, ethnicities: ["fijian", "tamil", "english"], tags: ["口岸", "美拉尼西亞"], flavor: "港口把印度契約工與斐濟村落接到同一座城", lat: -18.14, lon: 178.44 }),
+  s({ id: "apia", name: "阿皮亞", kind: "port", region: "oceania", countries: [c(1920, 1961, "紐西蘭託管／薩摩亞"), c(1962, YEAR_MAX, "薩摩亞")], country: "薩摩亞", climate: "tropical", weight: 2, ethnicities: ["samoan"], tags: ["口岸", "玻里尼西亞"], flavor: "獨立比港口更晚到。貿易風終年把潮聲送進市場", lat: -13.83, lon: -171.77 }),
+  s({ id: "nuku_alofa", name: "努庫阿洛法", kind: "port", region: "oceania", country: "東加", climate: "tropical", weight: 1, ethnicities: ["tongan"], tags: ["王城", "玻里尼西亞"], flavor: "王國的首都有港口與王宮。潮汐比憲法更早到岸", lat: -21.13, lon: -175.20 }),
+  s({ id: "port_moresby", name: "莫士比港", kind: "port", region: "oceania", countries: [c(1920, 1974, "澳屬巴布亞／巴布亞紐幾內亞"), c(1975, YEAR_MAX, "巴布亞紐幾內亞")], country: "巴布亞紐幾內亞", climate: "tropical", weight: 2, ethnicities: ["papua_highlander", "english"], tags: ["口岸", "美拉尼西亞"], flavor: "從殖民港長成的首都。山後的高地口音比英語更密", lat: -9.44, lon: 147.18 }),
+  s({ id: "noumea", name: "努美亞", kind: "port", region: "oceania", country: "法國（新喀里多尼亞）", climate: "tropical", weight: 2, ethnicities: ["kanak", "french"], tags: ["鎳礦", "卡納克"], flavor: "鎳把潟湖變成港口。卡納克的土地名比三色旗更早面對海", lat: -22.28, lon: 166.46 }),
+  s({ id: "papeete", name: "帕皮提", kind: "port", region: "oceania", country: "法國（玻里尼西亞）", climate: "tropical", weight: 2, ethnicities: ["tahitian", "french"], tags: ["口岸", "大溪地"], flavor: "礁湖裡的行政港。大溪地語比航空時刻表更早佔領市場", lat: -17.54, lon: -149.57 }),
+  s({ id: "hagatna", name: "阿加尼亞", kind: "city", region: "oceania", countries: [c(1920, 1940, "美國／關島"), c(1941, 1943, "日本／關島"), c(1944, YEAR_MAX, "美國／關島")], country: "美國（關島）", climate: "tropical", weight: 1, ethnicities: ["chamorro", "english", "filipino"], tags: ["查莫羅", "口岸"], flavor: "查莫羅的首府被戰火抹過。西班牙姓氏與美國跑道並排", lat: 13.47, lon: 144.75 }),
+];

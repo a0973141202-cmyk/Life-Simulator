@@ -1,0 +1,11 @@
+import { SCHOOL_CHILD_INCIDENTS } from "./child.js";
+import { SCHOOL_TEEN_INCIDENTS } from "./teen.js";
+import { SCHOOL_EXTREME_INCIDENTS } from "./extreme.js";
+
+export const SCHOOL_INCIDENTS = Object.freeze([
+  ...SCHOOL_CHILD_INCIDENTS,
+  ...SCHOOL_TEEN_INCIDENTS,
+  ...SCHOOL_EXTREME_INCIDENTS,
+]);
+
+export { SCHOOL_CHILD_INCIDENTS, SCHOOL_TEEN_INCIDENTS, SCHOOL_EXTREME_INCIDENTS };

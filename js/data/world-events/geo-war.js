@@ -1,0 +1,127 @@
+import { worldEvent as we } from "./schema.js";
+
+/**
+ * Active combat / occupation / militia overlay. Settlement kind warzone, or 戰亂區 tag
+ * (resolved to geoBand warzone). Stray rounds do not wait for the protagonist to be special.
+ */
+
+export const WORLD_WAR_EVENTS = [
+  we({
+    id: "we_stray_round",
+    kind: "survival",
+    age: [5, 90],
+    geoBands: ["warzone"],
+    fact: "這一週，遠處的對射在沒有宣佈的情況下穿過這條街。玻璃先碎。有人把孩子按到地面。彈著點不認門牌。警報如果存在，它比第一聲晚。",
+    procedure: "流彈是幾何問題。智力與魅力不改變彈道。",
+    options: [
+      {
+        stance: "endure",
+        text: "貼地、貼牆，等聲音的間隔變長",
+        effects: { health: -2, mood: -3, intelligence: 1 },
+        addTags: ["world_stray_fire", "world_shelter_line"],
+        hooks: ["survival", "hide", "war"],
+        followUps: ["你還能站起來。街上多了不能走的位置。這一週的課或工會改成缺席。"],
+        risk: { chance: 0.2, effects: { health: -14 }, text: "彈著點比牆近。傷或死按物理結算，不按劇情。" },
+      },
+      {
+        stance: "run",
+        text: "帶人跑向你記得的掩體、地下室或溝",
+        effects: { health: -3, charm: 1, mood: -2 },
+        addTags: ["world_stray_fire", "world_shelter_line"],
+        hooks: ["survival", "war"],
+        followUps: ["有人跟著你的背。掩體可能已滿。奔跑本身也是暴露面積。"],
+        risk: { chance: 0.28, effects: { health: -16 }, text: "開放路面比掩體先結束這一段。" },
+      },
+      {
+        stance: "look",
+        dark: true,
+        text: "在空隙裡探頭、撿還能用的金屬或去看是哪一邊在打",
+        effects: { intelligence: 1, wealth: 1, health: -2, mood: -1 },
+        addTags: ["world_stray_fire", "world_looter"],
+        hooks: ["war", "crime", "street"],
+        path: "crime",
+        followUps: ["你多知道了一點方向。也多被兩邊的人看見一次。戰場上多問一句，就可能被當成間諜搜身。"],
+        consequence: { heat: 6, infamy: 3, path: "crime", pathXp: 1, eventLabel: "火線探頭" },
+        risk: { chance: 0.38, effects: { health: -18 }, text: "探頭被當成瞄準。沒有解釋窗口。" },
+      },
+    ],
+  }),
+  we({
+    id: "we_checkpoint",
+    kind: "survival",
+    age: [8, 90],
+    geoBands: ["warzone", "camp"],
+    fact: "這一週，路口出現關卡。問的是證件、袋子、口音或「你跟哪一邊」。隊伍在槍或棍的射程裡移動。有人被叫出去。有人被放行。理由不必當眾宣讀。",
+    procedure: "通行是被批准的。拒絕批准不需要起訴書。",
+    options: [
+      {
+        stance: "endure",
+        text: "按指示打開口袋，少說話，把被拿走的當成過路費",
+        effects: { wealth: -2, mood: -2, charm: -1, health: -1 },
+        addTags: ["world_checkpoint", "world_curfew"],
+        hooks: ["official", "hide", "war"],
+        followUps: ["你通過了。袋子輕了。名字可能被抄。這一週出門的成本上升。"],
+      },
+      {
+        stance: "talk",
+        text: "解釋行程、出示更多紙，或請一個看起來像能說話的人幫腔",
+        effects: { charm: 1, intelligence: 1, mood: -1 },
+        addTags: ["world_checkpoint"],
+        hooks: ["official", "ask", "war"],
+        followUps: ["有時這能縮短搜查。有時這會讓問題變多。語言本身成為風險。"],
+        risk: { chance: 0.3, effects: { health: -6, wealth: -2, charm: -3 }, text: "解釋被聽成謊言。你被扣下更長，或被帶離隊伍。" },
+      },
+      {
+        stance: "name",
+        dark: true,
+        text: "把一個能讓自己過關的名字、地址或「不是自己人」交出去",
+        effects: { wealth: 1, charm: -2, intelligence: 1, mood: -2 },
+        addTags: ["world_informant", "world_checkpoint"],
+        hooks: ["official", "street", "war"],
+        path: "crime",
+        followUps: ["你被放行。被你點到的位置會在後面的週次被使用。兩邊都可能再來找你。"],
+        consequence: { heat: 8, trust: -10, infamy: 6, path: "crime", pathXp: 2, eventLabel: "關卡交名" },
+        risk: { chance: 0.26, effects: { health: -8, charm: -4 }, text: "名字不夠用，或被點的那一側當晚就找到你。" },
+      },
+    ],
+  }),
+  we({
+    id: "we_curfew_round",
+    kind: "survival",
+    age: [5, 90],
+    geoBands: ["warzone"],
+    fact: "這一週，宵禁開始或又提前了一小時。窗外有巡邏的腳步與車燈。屋裏的燈被要求縫死。有人在不該在外面的時間咳嗽。敲門可能是檢查，也可能不是。",
+    procedure: "合法的戶外時間被切短。出門本身成為一次檢定。",
+    options: [
+      {
+        stance: "endure",
+        text: "熄燈、離窗，把這一夜當成必須通過的黑暗",
+        effects: { mood: -2, health: -1, intelligence: -1 },
+        addTags: ["world_curfew", "world_blackout"],
+        hooks: ["hide", "night", "war"],
+        followUps: ["你沒有出門。夜裡反覆醒來聽動靜。第二天走路發飄、眼皮抬不起來。"],
+      },
+      {
+        stance: "peek",
+        text: "從窗縫或門縫看巡邏走到哪，好判斷明天的路",
+        effects: { intelligence: 2, health: -1, mood: -2 },
+        addTags: ["world_curfew", "world_stray_fire"],
+        hooks: ["war", "hide"],
+        followUps: ["你多知道一條能走或不能走的巷。窗縫漏光本身也可能被記。"],
+        risk: { chance: 0.24, effects: { health: -9 }, text: "光或人影被當成目標。" },
+      },
+      {
+        stance: "out",
+        dark: true,
+        text: "仍在宵禁裡出門：送東西、看場或去不該去的地方",
+        effects: { wealth: 2, health: -2, charm: 1, mood: -1 },
+        addTags: ["world_curfew", "world_street_lookout"],
+        hooks: ["night", "crime", "war"],
+        path: "crime",
+        followUps: ["夜路有它的匯率。被攔下時，理由比貨物更容易變成罪。"],
+        consequence: { heat: 10, wanted: 4, infamy: 5, path: "crime", pathXp: 2, eventLabel: "宵禁出門" },
+        risk: { chance: 0.4, effects: { health: -12, wealth: -3 }, text: "巡邏比你的理由早到。拘留或槍托按現場規則。" },
+      },
+    ],
+  }),
+];

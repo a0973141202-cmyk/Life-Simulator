@@ -1,0 +1,12 @@
+{
+  "name": "life-simulator",
+  "private": true,
+  "version": "1.0.0",
+  "description": "1920–2025 世紀人生模擬器：純前端網頁遊戲（HTML / CSS / JS）",
+  "type": "module",
+  "main": "js/GameEngine.js",
+  "scripts": {
+    "start": "python -m http.server 8765",
+    "validate": "python js/_validate.py"
+  }
+}
