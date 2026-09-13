@@ -13,6 +13,11 @@ import { findCity, getEraForYear } from "./data.js";
 import { applyEffects, generateTurn, resolveOption } from "./eventGenerator.js";
 import { describeGenesis, GenesisEngine } from "./genesis.js";
 import { composeOpeningDossier } from "./opening-chronicle.js";
+import {
+  isMemeLegendCharacter,
+  memeLegendStartAgeOf,
+  memePeakJournalLine,
+} from "./meme-chronicle.js";
 import { composeLifeResolution } from "./life-resolution.js";
 import { interceptUnsafeOption } from "./boundary.js";
 import {
@@ -175,7 +180,8 @@ export class GameEngine {
     this.rng = createRng(this.seed, overrides.rngState);
     this.genesis = new GenesisEngine({ rng: this.rng, seed: this.seed });
     this.character = this.genesis.generateRandomCharacter(overrides);
-    this.clock = createClockAtAge(this.character.birthDate, PLAY_AGE_MIN);
+    const startAge = memeLegendStartAgeOf(this.character) ?? PLAY_AGE_MIN;
+    this.clock = createClockAtAge(this.character.birthDate, startAge);
     this.journal = [];
     this.turnCount = 0;
     this.gameOver = false;
@@ -190,16 +196,32 @@ export class GameEngine {
       triggeredRisk: false,
     };
     this._pushJournal("出生", opening.birth || describeGenesis(this.character, this.rng), {});
-    this._pushJournal("意識萌芽", opening.awakening, {});
+    this._pushJournal(
+      isMemeLegendCharacter(this.character) ? "傳奇全盛" : "意識萌芽",
+      opening.awakening,
+      {},
+    );
     ensureLifeProgress(this.character);
     seedTagLifecycle(this.character, 0);
+    if (isMemeLegendCharacter(this.character) && startAge >= SOCIETY_ENTRY_AGE) {
+      const time = snapshotTime(this.clock, this.character);
+      const entered = enterSociety(this.character, time, this.rng);
+      completeTurningPoint(this.character, "early_survival", { ...time, ageYears: startAge, year: time.year });
+      completeTurningPoint(this.character, "first_school", { ...time, ageYears: startAge, year: time.year });
+      completeTurningPoint(this.character, "exam_fork", { ...time, ageYears: startAge, year: time.year });
+      completeTurningPoint(this.character, "society_entry", { ...time, ageYears: startAge, year: time.year });
+      this._pushJournal("傳奇全盛", [memePeakJournalLine(this.character), ...(entered.notes || [])].filter(Boolean).join(" "), {});
+      this._gainTags(entered.applied || ["adult_society_entry"]);
+    }
     tickLifeProgress(this.character, {
-      ageYears: PLAY_AGE_MIN,
+      ageYears: startAge,
       year: this.clock.year,
       time: this.clock,
       character: this.character,
     });
-    const openingDeath = this._checkDeath("五歲剛能自己走路的那兩週，高燒、腹瀉或飢餓把性命收走了。");
+    const openingDeath = startAge < 10
+      ? this._checkDeath("五歲剛能自己走路的那兩週，高燒、腹瀉或飢餓把性命收走了。")
+      : null;
     if (openingDeath) return openingDeath.state;
     this.currentEvent = generateTurn(this.rng, this._context());
     this._persist();

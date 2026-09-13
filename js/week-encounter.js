@@ -16,6 +16,7 @@ import { optionExcluded } from "./exclusion-buffer.js";
 import { textOnCooldown } from "./text-history.js";
 import { textsTooSimilar } from "./choice-similarity.js";
 import { pickDistinctLanes } from "./choice-dedupe.js";
+import { composeMemeFortnight, isMemeLegendCharacter } from "./meme-chronicle.js";
 
 function joinSentences(parts) {
   const seen = new Set();
@@ -151,6 +152,22 @@ export function composeWeekEncounter(rng, ctx = {}) {
   const figure = resolveFigureForWeek(rng, ctx);
   const pressure = inferEncounterPressure(ctx, facts, figure);
   const civilian = figure ? null : { role: civilianRole(facts, pressure) };
+  if (isMemeLegendCharacter(ctx.character)) {
+    const memeIntro = composeMemeFortnight(rng, ctx);
+    const cleanMeme = scrubRiddleText(scrubPublicText(memeIntro));
+    const safeMeme = cleanMeme && !isDossierLeakSentence(cleanMeme)
+      ? lockChronicleToClock(cleanMeme, facts)
+      : lockChronicleToClock(`${facts.year}年，${facts.place}。傳奇全盛這兩週仍按他認得的節奏過。`, facts);
+    return {
+      intro: safeMeme,
+      pressure,
+      figure: null,
+      civilian: { role: "legend" },
+      contextualIntro: true,
+      figureWoven: false,
+      memeLegend: true,
+    };
+  }
   const season = facts.season ? `${facts.season}` : "";
   const body = facts.health <= 36
     ? `體格在${facts.city}已經走路會喘`

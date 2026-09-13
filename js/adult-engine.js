@@ -15,6 +15,7 @@ import {
 } from "./data/occupations-database.js";
 import { DAILY_AUDIENCE } from "./data/daily/schema.js";
 import { SOCIETY_ENTRY_AGE } from "./constants.js";
+import { isMemeLegendCharacter } from "./meme-chronicle.js";
 import { progressAllowsIncident } from "./life-stage-manager.js";
 import { addCharacterTag } from "./tag-system.js";
 import { chance, pickWeighted } from "./rng.js";
@@ -117,6 +118,7 @@ export function adultIncidentChance(ctx) {
 }
 
 export function pickAdultIncident(rng, ctx) {
+  if (isMemeLegendCharacter(ctx.character)) return null;
   const age = ctx.ageYears ?? 0;
   if (age < SOCIETY_ENTRY_AGE) return null;
   if (!progressAllowsIncident("adult", ctx)) return null;

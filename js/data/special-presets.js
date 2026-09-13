@@ -133,9 +133,9 @@ export const TADOKORO_KOJI_PRESET = Object.freeze({
   statsBoost: Object.freeze({ health: 12, sanity: -6 }),
   tags: TADOKORO_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把田所浩二寫在東京下北澤的窄巷裏。二手唱片、酒吧燈與鐵道路基把昭和末的潮氣吹進平成的皮膚。身體比街燈更早學會怎麼在擠壓裏站住。",
-    awakening: "五歲起他靠野獸般的直覺判斷誰會先動手。體育場上練出的肺與腿撐得住高壓，巷口卻總把奇人怪事吸過來——像有一塊深淵磁場寫在他名字底下。",
-    weekLead: "下北澤這兩週仍是窄巷、汽笛與深夜的笑聲。田所浩二按傳奇那一套走路：危機來得極端，活路也來得極端。",
+    birth: "戶籍把田所浩二寫在東京下北澤。窄巷、鐵道路基與夜班燈比官署更早認得他。二十四歲上場時，夏蜜柑的酸氣與野獸般的氣息已經寫進走路的方式。",
+    awakening: "傳奇全盛略過幼年卷宗。打工班表、惡臭名場面與那串說不清的數字並排：危機來得極端，活路也來得荒謬。",
+    weekLead: "下北澤這兩週仍是窄巷、汽笛與深夜的笑聲。田所浩二按野獸先輩那一套走路：該扛就扛，該笑就笑，該絕處逢生就絕不先低頭。",
     outline: "shimokitazawa|tadokoro_koji|beast",
   }),
 });
@@ -163,8 +163,8 @@ export const BILLY_HERRINGTON_PRESET = Object.freeze({
   statsBoost: Object.freeze({ health: 16, sanity: 4 }),
   tags: BILLY_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把比利·海靈頓寫在一九六九年的紐約。移民碼頭的潮氣、地鐵鐵軌與體育館更衣室的汗味比摩天樓更早把他圍住。William Glen Harold 這個長名在街上縮成 Billy，身子卻一天天往摔角墊與鐵杠上長。",
-    awakening: "五歲起他就笑得響、站得直。肌肉與摔角的路子先寫進走路的方式；對同伴像兄貴一樣肯挺、肯喊，樂觀不散，人群裏也自然有人跟他走。",
+    birth: "戶籍把比利·海靈頓寫在紐約。移民碼頭、體育館更衣室與摔角墊比摩天樓更早把他圍住。二十四歲上場時，William Glen Harold 這個長名在街上早已縮成 Billy。",
+    awakening: "傳奇全盛略過幼年卷宗。筋肉、兄貴精神與哲學視角並排：溫柔重情，困境來了也先以摔角手的大度站穩。",
     weekLead: "紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。比利·海靈頓按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
     outline: "newyork|billy_herrington|aniki",
   }),
@@ -189,8 +189,8 @@ export const RICARDO_MILOS_PRESET = Object.freeze({
   themeClass: "preset-rio-banana",
   tags: RICARDO_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱風與港口的節奏比官署更早把他叫醒。Ricardo 這個名字在街頭縮成一身自由的步伐。",
-    awakening: "五歲起他就把熱情踩進每一步。香蕉傳奇與迷因舞步寫在走路的方式裏；絕對自由不換，巴西的熱也不散。",
+    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱帶陽光與港口節奏比官署更早把他叫醒。二十四歲上場時，紅色頭巾與香蕉傳奇已經寫進步伐。",
+    awakening: "傳奇全盛略過幼年卷宗。絕對自由、迷因舞步與巴西熱情並排：危機來了也能華麗轉身，樂天不散。",
     weekLead: "里約這兩週仍是山海風與街頭節奏。里卡多·米洛斯按傳奇那一套走路：該舞就舞，該自由就自由。",
     outline: "rio|ricardo_milos|banana",
   }),

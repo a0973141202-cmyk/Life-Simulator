@@ -66,6 +66,7 @@ import { describeSocialFeedback } from "./social-feedback.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { assembleWeeklyChronicle, chronicleStageLine, chronicleSituationLine, scanNarrativeFacts } from "./chronicle-voice.js";
 import { composeFollowBeat, composeHistoryPulse, composeLiveFollowUp, composeStageClause, composeStatusRecord, scrubEraCopy } from "./dynamic-prose.js";
+import { isMemeLegendCharacter } from "./meme-chronicle.js";
 import { consumeOpeningWeekLead } from "./opening-chronicle.js";
 import { eventOutline, rememberTriggeredMany } from "./event-memory.js";
 import { beginTextTurn, filterFreshByText, rememberTextSnippet } from "./text-history.js";
@@ -203,6 +204,7 @@ function statusLine(stats, tags, ledger, ctx = {}) {
 
 function sliceOfLife(rng, stage, era, ctx = {}) {
   ctx.stage = ctx.stage || stage;
+  if (isMemeLegendCharacter(ctx.character)) return "";
   const line = chronicleStageLine(rng, ctx);
   if (line && !scanSemanticMismatches(line, ctx).length) return line;
   return "";

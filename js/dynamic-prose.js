@@ -6,6 +6,7 @@ import { BODY_ATOM, FOOD_ATOM, FOOD_BY_REGION, LABOR_ATOM, THREAD_ATOM } from ".
 import { FOOD_BY_CLASS } from "./data/variator-lexicon.js";
 import { chronicleLineKey } from "./chronicle-key.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
+import { composeMemeFortnight, isMemeLegendCharacter } from "./meme-chronicle.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
 import { pickLiveChoiceLane } from "./text-logic-filter.js";
@@ -258,6 +259,14 @@ export function composePlaceLine(facts) {
 }
 
 export function composeFortnightRecord(rng, ctx = {}) {
+  if (isMemeLegendCharacter(ctx.character)) {
+    const meme = composeMemeFortnight(rng, ctx);
+    if (meme) {
+      const who = ctx.character;
+      if (who) rememberTextSnippet(who, { stem: meme });
+      return meme;
+    }
+  }
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   ctx.narrativeFacts = facts;
   const current = ctx.currentTags || ctx.environment?.tags || [];
@@ -283,6 +292,10 @@ export function composePeriodChronicle(rng, ctx = {}) {
 }
 
 export function composeSituationLine(rng, ctx = {}) {
+  if (isMemeLegendCharacter(ctx.character)) {
+    const meme = composeMemeFortnight(rng, ctx);
+    if (meme) return meme;
+  }
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   ctx.narrativeFacts = facts;
   const current = ctx.currentTags || [];
@@ -365,6 +378,10 @@ export function composeFollowBeat(rng, ctx = {}, extra = {}) {
 }
 
 export function composeStageClause(rng, ctx = {}) {
+  if (isMemeLegendCharacter(ctx.character)) {
+    // Peak-era legends never fall back to childhood / generic workplace stage copy.
+    return "";
+  }
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const age = facts.age || 0;
   if (age <= 6) {

@@ -9,6 +9,7 @@ import { scrubPublicText, scrubRiddleText, isDossierLeakSentence } from "./data/
 import { composeFortnightRecord, lockChronicleToClock, scrubEraCopy } from "./dynamic-prose.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { publicTagLabel } from "./data/ui-zh.js";
+import { composeMemeFortnight, composeMemeTagBeat, isMemeLegendCharacter } from "./meme-chronicle.js";
 
 const SENTENCE_SPLIT = /(?<=[。！？])\s*|\n+/;
 const YEAR_GLUE = /((?:1[89]|20)\d{2}年[^。！？\n]{4,80}?)(?=(?:1[89]|20)\d{2}年)/g;
@@ -74,9 +75,10 @@ function contradicts(left, right) {
 export function splitChronicleUnits(text) {
   const raw = String(text || "").trim();
   if (!raw) return [];
-  // Force a break before each year stamp so space-glued follow-ups separate.
+  // Break before year stamps that start a new clause (need real whitespace).
+  // Do NOT match zero-width before mid-clause years like 「這兩週是1987年」.
   const yearBroken = raw
-    .replace(/\s*((?:1[89]|20)\d{2}年)/g, "\n$1")
+    .replace(/\s+((?:1[89]|20)\d{2}年)/g, "\n$1")
     .replace(YEAR_GLUE, "$1\n");
   const units = [];
   for (const block of yearBroken.split(SENTENCE_SPLIT)) {
@@ -131,6 +133,9 @@ export function dedupeChronicleUnits(units = [], facts = {}, maxUnits = 7) {
 }
 
 function tagBeat(ctx = {}, options = []) {
+  if (isMemeLegendCharacter(ctx.character)) {
+    return composeMemeTagBeat(() => 0.44, ctx, options);
+  }
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const drivers = [...new Set(
     (options || []).flatMap((row) => row.driverTags || []).map(String).filter(Boolean),
@@ -209,9 +214,13 @@ function tagBeat(ctx = {}, options = []) {
 export function composeAlignedChronicle(rng, ctx = {}, options = []) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   ctx.narrativeFacts = facts;
+  const roll = typeof rng === "function" ? rng : (() => 0.41);
   let intro = String(ctx.weekEncounter?.intro || "").trim();
+  if (isMemeLegendCharacter(ctx.character)) {
+    intro = composeMemeFortnight(roll, ctx) || intro;
+  }
   if (!intro) {
-    intro = composeFortnightRecord(typeof rng === "function" ? rng : (() => 0.41), ctx);
+    intro = composeFortnightRecord(roll, ctx);
   }
   // One lead intro + at most one tag beat. No stacked year/stage/option mirrors.
   const units = dedupeChronicleUnits([
