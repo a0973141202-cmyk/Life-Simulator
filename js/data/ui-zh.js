@@ -140,9 +140,20 @@ export const TAG_ID_ZH = Object.freeze({
   persona_quit_ahead: "見好就收",
   persona_shimokita_legend: "下北澤傳奇",
   persona_beast_instinct: "野獸直覺",
+  persona_beast_senpai: "野獸先輩",
+  persona_stench: "惡臭",
   persona_athlete: "體育生",
   persona_high_pressure: "高壓生存",
   persona_abyss_magnet: "深淵磁場",
+  persona_muscle_hunk: "肌肉猛男",
+  persona_wrestler: "摔角手",
+  persona_aniki: "兄貴精神",
+  persona_cheerful: "樂觀開朗",
+  persona_born_leader: "天生領袖",
+  persona_banana_legend: "香蕉傳奇",
+  persona_absolute_freedom: "絕對自由",
+  persona_meme_dancer: "迷因舞王",
+  persona_brazil_passion: "巴西熱情",
 });
 
 const HAN_RE = /[\u4e00-\u9fff]/;

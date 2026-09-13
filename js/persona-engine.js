@@ -103,7 +103,7 @@ export function rollPersonaCrisisSwing(character, rng, ctx = {}) {
   return { applied: true, swing, note };
 }
 
-/** Hardy+principled resist, athlete buffer, and weekly beast swing. */
+/** Hardy+principled, athlete buffer, muscle wrestler resist, and weekly beast swing. */
 export function personaCrisisResistBonus(character) {
   let bonus = 0;
   if (hasPersona(character, "persona_hardy") && hasPersona(character, "persona_principled")) {
@@ -111,6 +111,9 @@ export function personaCrisisResistBonus(character) {
   }
   if (hasPersona(character, "persona_athlete") && hasPersona(character, "persona_high_pressure")) {
     bonus += 7;
+  }
+  if (hasPersona(character, "persona_muscle_hunk") && hasPersona(character, "persona_wrestler")) {
+    bonus += 24;
   }
   const state = character?.personaState;
   bonus += Number(state?.crisisSwing || 0);
@@ -350,6 +353,41 @@ export function canMintBeastInstinct(ctx = {}) {
   return Number(ctx.ageYears || 0) >= 8;
 }
 
+export function canMintRicardoRhythm(ctx = {}) {
+  const character = ctx.character;
+  if (!character) return false;
+  if (!hasPersona(character, "persona_banana_legend") && !hasPersona(character, "persona_meme_dancer")) {
+    return false;
+  }
+  return Number(ctx.ageYears || 0) >= 8;
+}
+
+export function mintRicardoRhythmOption(rng, ctx = {}, index = 1) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  const city = facts.city || "里約熱內盧";
+  const text = composeChoiceLine(rng, ctx, "family", index + 83, {
+    direction: "seek",
+    driverTags: ["persona_banana_legend", "persona_meme_dancer", "persona_brazil_passion", "persona_absolute_freedom"],
+    tagFocus: "persona",
+    tagLabel: "迷因舞王",
+  }) || `把巴西的熱與自由的舞步踩進${city}這兩週，危機來了也不先收住笑聲`;
+  return {
+    id: `persona_ricardo_${index}`,
+    text,
+    trueText: text,
+    tagDriven: true,
+    liveTagMint: true,
+    driverTags: ["persona_banana_legend", "persona_meme_dancer", "persona_brazil_passion", "persona_absolute_freedom"]
+      .filter((id) => hasPersona(ctx.character, id)),
+    direction: "seek",
+    situation: "family",
+    hooks: ["social", "survival"],
+    ricardoRhythm: true,
+    effects: { mood: 2, sanity: 1, charm: 1 },
+    risk: { chance: 0.18, effects: { sanity: -1 } },
+  };
+}
+
 export function mintBeastInstinctOption(rng, ctx = {}, index = 0) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const city = facts.city || "下北澤";
@@ -375,6 +413,204 @@ export function mintBeastInstinctOption(rng, ctx = {}, index = 0) {
   };
 }
 
+export function canMintMuscleWrestle(ctx = {}) {
+  const character = ctx.character;
+  if (!character) return false;
+  if (!hasPersona(character, "persona_muscle_hunk") || !hasPersona(character, "persona_wrestler")) return false;
+  return Number(ctx.ageYears || 0) >= 10;
+}
+
+export function mintMuscleWrestleOption(rng, ctx = {}, index = 0) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  const city = facts.city || "紐約";
+  const text = composeChoiceLine(rng, ctx, "family", index + 53, {
+    direction: "resist",
+    driverTags: ["persona_muscle_hunk", "persona_wrestler"],
+    tagFocus: "persona",
+    tagLabel: "摔角手",
+  }) || `用摔角墊上練出的身子，把${city}這兩週的勞動、衝突或危機硬扛過去`;
+  return {
+    id: `persona_wrestle_${index}`,
+    text,
+    trueText: text,
+    tagDriven: true,
+    liveTagMint: true,
+    driverTags: ["persona_muscle_hunk", "persona_wrestler"],
+    direction: "resist",
+    situation: "family",
+    hooks: ["survival", "labor", "conflict"],
+    muscleWrestle: true,
+    effects: { health: 2, mood: 1, sanity: 1 },
+    risk: { chance: 0.16, effects: { health: -1 } },
+  };
+}
+
+export function canMintAnikiUplift(ctx = {}) {
+  const character = ctx.character;
+  if (!character || !hasPersona(character, "persona_aniki")) return false;
+  if (Number(ctx.ageYears || 0) < 10) return false;
+  const living = listNpcs(character, { aliveOnly: true, year: ctx.year || ctx.time?.year });
+  return living.some((npc) => npc.role !== "rival");
+}
+
+export function mintAnikiUpliftOption(rng, ctx = {}, index = 1) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  const year = facts.year || ctx.year || "";
+  const living = listNpcs(ctx.character, { aliveOnly: true, year })
+    .filter((npc) => npc.role !== "rival")
+    .sort((a, b) => (a.affection || 50) - (b.affection || 50));
+  const low = living.find((npc) => (npc.affection || 50) <= 48) || living[0];
+  const who = low ? `${roleLabel(low.role)}${low.name}` : "還肯跟你說話的同伴";
+  const city = facts.city || "此地";
+  const bonded = hasPersona(ctx.character, "persona_loyal_friend") || hasPersona(ctx.character, "persona_brotherhood");
+  const text = composeChoiceLine(rng, ctx, "family", index + 61, {
+    direction: "help",
+    driverTags: ["persona_aniki", bonded ? "persona_loyal_friend" : "persona_aniki"],
+    tagFocus: "persona",
+    tagLabel: "兄貴精神",
+  }) || `以兄貴的勁頭把${who}從低谷拉起來，先把${city}${year}年這兩週的逆境扛過`;
+  return {
+    id: `persona_aniki_${index}`,
+    text,
+    trueText: text,
+    tagDriven: true,
+    liveTagMint: true,
+    driverTags: ["persona_aniki"].concat(bonded ? ["persona_loyal_friend"] : []),
+    direction: "help",
+    situation: "family",
+    hooks: ["family", "social", "survival"],
+    anikiUplift: true,
+    kinDelta: low ? { npcId: low.id, affection: bonded ? 22 : 16 } : { affection: 12 },
+    effects: { mood: 2, sanity: 1, charm: 1 },
+    risk: { chance: 0.12, effects: { sanity: -1 } },
+  };
+}
+
+export function canMintLeaderRally(ctx = {}) {
+  const character = ctx.character;
+  if (!character) return false;
+  if (!hasPersona(character, "persona_cheerful") || !hasPersona(character, "persona_born_leader")) return false;
+  return Number(ctx.ageYears || 0) >= 12;
+}
+
+export function mintLeaderRallyOption(rng, ctx = {}, index = 2) {
+  const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
+  const city = facts.city || "此地";
+  const text = composeChoiceLine(rng, ctx, "family", index + 71, {
+    direction: "help",
+    driverTags: ["persona_cheerful", "persona_born_leader"],
+    tagFocus: "persona",
+    tagLabel: "天生領袖",
+  }) || `樂觀地站到人群前，把${city}這兩週能一起做完的事先帶起來`;
+  return {
+    id: `persona_leader_${index}`,
+    text,
+    trueText: text,
+    tagDriven: true,
+    liveTagMint: true,
+    driverTags: ["persona_cheerful", "persona_born_leader"],
+    direction: "help",
+    situation: "family",
+    hooks: ["social", "labor", "family"],
+    leaderRally: true,
+    effects: { charm: 2, mood: 2, sanity: 1 },
+    risk: { chance: 0.14, effects: { sanity: -1 } },
+  };
+}
+
+/**
+ * Cheerful + born leader: halve sanity decay under era / social pressure.
+ */
+export function applyLeaderOptimismShield(character, sanityWeek = {}) {
+  if (!character || !hasPersona(character, "persona_cheerful") || !hasPersona(character, "persona_born_leader")) {
+    return sanityWeek || { moodDelta: 0, note: "" };
+  }
+  const delta = Number(sanityWeek.moodDelta || 0);
+  if (delta >= 0) return sanityWeek;
+  const reduced = Math.trunc(delta / 2);
+  return {
+    ...sanityWeek,
+    moodDelta: reduced,
+    note: reduced < 0
+      ? "樂觀與領袖氣還擋得住一半時代壓：神智衰得比旁人慢。"
+      : (sanityWeek.note
+        ? "樂觀開朗把這一週的精神扣減頂了回去。"
+        : ""),
+  };
+}
+
+/**
+ * Aniki weekly: if allies are in a trough, ambient encouragement may fire.
+ */
+export function resolveAnikiBondTick(character, rng, ctx = {}) {
+  if (!character || !hasPersona(character, "persona_aniki")) return { applied: false, note: "" };
+  const state = ensurePersonaState(character);
+  const turn = Number(ctx.turnCount ?? 0);
+  if (turn - Number(state.lastAnikiTickTurn || -99) < 5) return { applied: false, note: "" };
+  if (roll01(rng) > 0.38) return { applied: false, note: "" };
+  const year = ctx.year || ctx.time?.year;
+  const living = listNpcs(character, { aliveOnly: true, year })
+    .filter((npc) => npc.role !== "rival");
+  const trough = living.filter((npc) => (npc.affection || 50) <= 42);
+  if (!trough.length && roll01(rng) > 0.25) return { applied: false, note: "" };
+  state.lastAnikiTickTurn = turn;
+  const target = trough[0] || living.sort((a, b) => (a.affection || 0) - (b.affection || 0))[0];
+  if (!target) return { applied: false, note: "" };
+  const bonded = hasPersona(character, "persona_loyal_friend") || hasPersona(character, "persona_brotherhood");
+  const bump = bonded ? 10 : 6;
+  applyAffectionDelta(character, target.id, bump, ctx);
+  if (character.stats) {
+    character.stats.sanity = Math.min(100, Number(character.stats.sanity ?? 50) + 1);
+  }
+  const who = `${roleLabel(target.role)}${target.name}`;
+  return {
+    applied: true,
+    note: `兄貴精神這兩週先到：你把${who}從低谷邊拉回半步，友誼帳又厚了一層。`,
+  };
+}
+
+export function applyAnikiUpliftChoice(character, option, ctx = {}) {
+  if (!option?.anikiUplift || !character) return { applied: false };
+  const state = ensurePersonaState(character);
+  state.anikiUplifts = (state.anikiUplifts || 0) + 1;
+  if (option.kinDelta) {
+    const npc = applyAffectionDelta(
+      character,
+      option.kinDelta.npcId || option.kinDelta.role,
+      option.kinDelta.affection ?? 16,
+      ctx,
+    );
+    if (npc) {
+      state.favors.push({
+        npcId: npc.id,
+        strength: 3,
+        createdTurn: Number(ctx.turnCount ?? ctx.time?.turnCount ?? 0),
+        kind: "aniki",
+      });
+      if (state.favors.length > 8) state.favors.shift();
+    }
+  }
+  if (character.stats) {
+    character.stats.sanity = Math.min(100, Number(character.stats.sanity ?? 50) + 2);
+  }
+  return { applied: true, note: "伸出的那一隻手寫進對方的帳：低谷過了，好感與回報都厚了。" };
+}
+
+export function applyLeaderRallyChoice(character, option, ctx = {}) {
+  if (!option?.leaderRally || !character) return { applied: false };
+  const state = ensurePersonaState(character);
+  state.leaderRallies = (state.leaderRallies || 0) + 1;
+  const year = ctx.year || ctx.time?.year;
+  const allies = listNpcs(character, { aliveOnly: true, year }).filter((npc) => npc.role !== "rival");
+  for (const npc of allies.slice(0, 3)) {
+    applyAffectionDelta(character, npc.id, 4, ctx);
+  }
+  if (character.ledger) {
+    character.ledger.trust = Math.min(100, Number(character.ledger.trust ?? 50) + 4);
+  }
+  return { applied: true, note: "人群跟你站了一回：領袖氣寫進這兩週的職場與街坊帳。" };
+}
+
 /**
  * Replace one triad slot with persona specials when tags match.
  */
@@ -388,6 +624,18 @@ export function weavePersonaOptions(rng, options = [], ctx = {}) {
   }
   if (canMintBeastInstinct(ctx) && next.length) {
     next[0] = mintBeastInstinctOption(rng, ctx, 0);
+  }
+  if (canMintMuscleWrestle(ctx) && next.length) {
+    next[0] = mintMuscleWrestleOption(rng, ctx, 0);
+  }
+  if (canMintAnikiUplift(ctx) && next.length) {
+    next[Math.min(1, next.length - 1)] = mintAnikiUpliftOption(rng, ctx, 1);
+  }
+  if (canMintLeaderRally(ctx) && next.length >= 3) {
+    next[2] = mintLeaderRallyOption(rng, ctx, 2);
+  }
+  if (canMintRicardoRhythm(ctx) && next.length) {
+    next[Math.min(1, next.length - 1)] = mintRicardoRhythmOption(rng, ctx, 1);
   }
   next = filterUnjustPersonaOptions(next, ctx.character);
   return next.slice(0, 3);
@@ -422,7 +670,11 @@ export function applyBrotherhoodStandChoice(character, option, ctx = {}) {
  */
 export function resolvePersonaPaybacks(character, rng, ctx = {}) {
   if (!character) return { triggered: false };
-  if (!hasPersona(character, "persona_loyal_friend") && !hasPersona(character, "persona_brotherhood")) {
+  if (
+    !hasPersona(character, "persona_loyal_friend")
+    && !hasPersona(character, "persona_brotherhood")
+    && !hasPersona(character, "persona_aniki")
+  ) {
     return { triggered: false };
   }
   const state = ensurePersonaState(character);
@@ -437,16 +689,19 @@ export function resolvePersonaPaybacks(character, rng, ctx = {}) {
   if (roll > 0.55) return { triggered: false };
   const favor = state.favors.pop();
   state.lastPaybackTurn = turn;
-  applyWealthDelta(character, { cash: 12, debt: -8 }, ctx.time || ctx);
+  const anikiBoost = favor?.kind === "aniki" || hasPersona(character, "persona_aniki");
+  applyWealthDelta(character, { cash: anikiBoost ? 18 : 12, debt: anikiBoost ? -12 : -8 }, ctx.time || ctx);
   if (character.stats) {
-    character.stats.health = Math.min(100, health + 6);
-    character.stats.sanity = Math.min(100, Number(character.stats.sanity ?? 50) + 4);
+    character.stats.health = Math.min(100, health + (anikiBoost ? 8 : 6));
+    character.stats.sanity = Math.min(100, Number(character.stats.sanity ?? 50) + (anikiBoost ? 6 : 4));
   }
   const npc = listNpcs(character, { aliveOnly: false }).find((row) => row.id === favor.npcId);
   const who = npc ? `${roleLabel(npc.role)}${npc.name}` : "舊時共過患難的人";
   return {
     triggered: true,
-    note: `${who}在關頭上伸了一手。從前挺過的帳，這回還回來了。`,
+    note: anikiBoost
+      ? `${who}在關頭上用力還了一手。從前兄貴式的援手，這回連本帶利回來了。`
+      : `${who}在關頭上伸了一手。從前挺過的帳，這回還回來了。`,
   };
 }
 
@@ -456,5 +711,7 @@ export function specialThemeClassesOf(character = {}) {
   if (character.specialPresetId === "zhang_junbin") classes.push("preset-hardboiled", "preset-zhang-junbin");
   if (character.specialPresetId === "huang_pinjun") classes.push("preset-yunlin-archive");
   if (character.specialPresetId === "tadokoro_koji") classes.push("preset-shimokita", "preset-tadokoro-koji");
+  if (character.specialPresetId === "billy_herrington") classes.push("preset-aniki-archive", "preset-billy-herrington");
+  if (character.specialPresetId === "ricardo_milos") classes.push("preset-rio-banana");
   return [...new Set(classes)];
 }

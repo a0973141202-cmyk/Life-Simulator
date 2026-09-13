@@ -418,6 +418,28 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
   }
   if (focus(["persona"], /^persona_/)) {
     const drivers = (extra.driverTags || []).map(String);
+    if (drivers.includes("persona_banana_legend") || drivers.includes("persona_meme_dancer") || drivers.includes("persona_brazil_passion") || drivers.includes("persona_absolute_freedom")) {
+      if (dir === "seek") return `把巴西的熱與自由的舞步踩進${city}這兩週`;
+      if (dir === "help") return `用笑聲與節奏把${who}從沉悶裏拉起來`;
+      if (dir === "resist") return `不拿絕對自由換一時規矩，仍按自己的步伐走`;
+      return `香蕉傳奇還在${city}的風裡，這兩週熱也不散`;
+    }
+    if (drivers.includes("persona_muscle_hunk") || drivers.includes("persona_wrestler")) {
+      if (dir === "resist" || dir === "guard") return `用摔角墊上練出的身子，把${city}這兩週的衝突或危機硬扛過去`;
+      if (dir === "endure") return `勞動與體能帳先交給肌肉，把${year}年這兩週能扛的扛完`;
+      if (dir === "seek") return `把力氣押進${city}還認摔角與鐵杠的那條路`;
+      return `肌肉與摔角並排，把${city}這兩週的生存帳先做完`;
+    }
+    if (drivers.includes("persona_aniki")) {
+      if (dir === "help") return `以兄貴的勁頭把同伴從低谷拉起來`;
+      if (dir === "resist") return `不丟下還在難處的人，先把逆境扛過`;
+      return `友誼與激勵寫在走路的方式裏，先把${city}這兩週難處帶過`;
+    }
+    if (drivers.includes("persona_cheerful") || drivers.includes("persona_born_leader")) {
+      if (dir === "help") return `樂觀地站到人群前，把${city}這兩週能一起做完的事先帶起來`;
+      if (dir === "resist") return `不讓時代動盪先吞掉神智，仍把人往前帶`;
+      return `領袖氣與笑聲並排，把${year}年這兩週的群眾帳扛住`;
+    }
     if (drivers.includes("persona_shimokita_legend") || drivers.includes("persona_beast_instinct")) {
       if (dir === "resist" || dir === "guard") return `憑野獸直覺在${city}街頭的縫裡找一條活路`;
       if (dir === "flee") return `危機一響就鑽進${city}巷弄，不跟絕境硬剛到底`;

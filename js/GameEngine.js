@@ -60,7 +60,7 @@ import {
 } from "./history-engine.js";
 import { currentEnvironmentTags } from "./data/seasons.js";
 import { applyHiddenOutcome, applyLedgerDeltas, ensureLedger, syncLedgerTags } from "./ledger.js";
-import { addCharacterTag, TagStore, tagsByCategory, visibleTagIds } from "./tag-system.js";
+import { addCharacterTag, ensurePermanentMemeTags, TagStore, tagsByCategory, visibleTagIds } from "./tag-system.js";
 import { seedTagLifecycle, weeklyTagLifecycle } from "./tag-lifecycle-engine.js";
 import { writeHallCard, writeLifeSave } from "./life-persist.js";
 import { composeMementoCard } from "./memento.js";
@@ -103,12 +103,16 @@ import {
   weeklyEconomicTick,
 } from "./wealth-engine.js";
 import {
+  applyAnikiUpliftChoice,
   applyAthleteHighPressureTick,
   applyBrotherhoodStandChoice,
+  applyLeaderOptimismShield,
+  applyLeaderRallyChoice,
   applyQuitAheadStopLoss,
   enhanceWealthStakeForPersona,
   personaCrisisResistBonus,
   resolveAbyssMagnetism,
+  resolveAnikiBondTick,
   resolvePersonaPaybacks,
   rollPersonaCrisisSwing,
 } from "./persona-engine.js";
@@ -495,6 +499,18 @@ export class GameEngine {
       turnCount: this.turnCount,
       time: ctx.time,
     });
+    const anikiChoice = applyAnikiUpliftChoice(this.character, option, {
+      ...ctx,
+      turnCount: this.turnCount,
+      time: ctx.time,
+      year: ctx.year || ctx.time?.year,
+    });
+    const leaderChoice = applyLeaderRallyChoice(this.character, option, {
+      ...ctx,
+      turnCount: this.turnCount,
+      time: ctx.time,
+      year: ctx.year || ctx.time?.year,
+    });
     const kinCrisis = option.kinCrisis
       ? applyKinCrisisChoice(this.character, option, { ...ctx.time, turnCount: this.turnCount })
       : { applied: [], notes: [], tags: [] };
@@ -518,6 +534,12 @@ export class GameEngine {
     }
     const kinWeek = weeklyNpcTick(this.character, { ...ctx, ...this._context(), turnCount: this.turnCount }, this.rng);
     const abyss = resolveAbyssMagnetism(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      year: ctx.year || ctx.time?.year,
+      time: ctx.time,
+    });
+    const anikiTick = resolveAnikiBondTick(this.character, this.rng, {
       ...ctx,
       turnCount: this.turnCount,
       year: ctx.year || ctx.time?.year,
@@ -666,11 +688,12 @@ export class GameEngine {
       appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) - athleteDrain.drain;
       appliedBundle.applied.health = (appliedBundle.applied.health || 0) + 1;
     }
-    const sanityWeek = weeklySanityCrisis(this.character, {
+    const sanityWeekRaw = weeklySanityCrisis(this.character, {
       ...ctx,
       eraCrisis: eraNow,
       pressure: karma.pressure,
     });
+    const sanityWeek = applyLeaderOptimismShield(this.character, sanityWeekRaw);
     if (sanityWeek.moodDelta) {
       const dripS = applyEffects(this.character.stats, { sanity: sanityWeek.moodDelta }, this.character, ctx.time);
       this.character.stats = dripS.stats;
@@ -734,7 +757,7 @@ export class GameEngine {
       ageYears: beforeTime.ageYears,
       choiceIndex,
       choiceText: option.trueText || option.text,
-      followUpText: monitorPublicText(this.rng, scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes, sanityWeek.note, economy.note, wealthStake.note, stopLoss.note, brotherhood.note, payback.note, crisisSwing.note, athleteDrain.note, abyss.note, ...(breakdown.notes || []), ...(wealthCrisis.notes || []), ...(kinCrisis.notes || []), ...(kinWeek.notes || []), ...(lifecycle.notes || [])].filter(Boolean).join(" ")), ctx, { kind: "follow" }),
+      followUpText: monitorPublicText(this.rng, scrubPublicText([resolved.followUpText, ...moodNotes, ...ledgerNotes, sanityWeek.note, economy.note, wealthStake.note, stopLoss.note, brotherhood.note, anikiChoice.note, leaderChoice.note, payback.note, crisisSwing.note, athleteDrain.note, abyss.note, anikiTick.note, ...(breakdown.notes || []), ...(wealthCrisis.notes || []), ...(kinCrisis.notes || []), ...(kinWeek.notes || []), ...(lifecycle.notes || [])].filter(Boolean).join(" ")), ctx, { kind: "follow" }),
       effects: combinedEffects,
       applied: appliedBundle.applied,
       tagsGained: [
@@ -933,6 +956,7 @@ export class GameEngine {
       ensureHistoryState(engine.character);
       ensureLifeProgress(engine.character);
       seedTagLifecycle(engine.character, engine.turnCount || 0);
+      ensurePermanentMemeTags(engine.character);
       ensureTextHistory(engine.character);
       ensureExclusionBuffer(engine.character);
       ensureEventMemory(engine.character);

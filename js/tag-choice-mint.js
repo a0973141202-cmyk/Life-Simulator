@@ -92,6 +92,8 @@ function scoreTag(tag, ctx) {
   if (cat === "socio" || cat === "condition" || cat === "adult") score += 2;
   if (valence === "strain") score += 2;
   if (valence === "advantage") score += 1;
+  const character = ctx.character || {};
+  if ((character.permanentTagIds || []).includes(tag)) score += 8;
   return score;
 }
 

@@ -142,8 +142,20 @@ function tagBeat(ctx = {}, options = []) {
     return `舊傷口一碰就痛，${city}這兩週仍要按傷勢能做的事排活`;
   }
   if (tags.some((tag) => tag.startsWith("persona_"))) {
-    if (tags.includes("persona_shimokita_legend") || tags.includes("persona_beast_instinct")) {
-      return `下北澤這兩週仍是窄巷與汽笛，危機來得極端，活路也來得極端`;
+    if (tags.includes("persona_banana_legend") || tags.includes("persona_meme_dancer") || tags.includes("persona_brazil_passion")) {
+      return `${city}這兩週仍有巴西的熱與自由的節奏，傳奇舞步不退`;
+    }
+    if (tags.includes("persona_muscle_hunk") || tags.includes("persona_wrestler")) {
+      return `${city}這兩週仍是體育館燈與街頭熱血，勞動與危機先交給身子扛`;
+    }
+    if (tags.includes("persona_aniki")) {
+      return `兄貴這兩週先伸手：同伴低谷時他不肯先鬆開`;
+    }
+    if (tags.includes("persona_cheerful") || tags.includes("persona_born_leader")) {
+      return `樂觀與領袖氣還在，時代壓來也比旁人少先扣神智`;
+    }
+    if (tags.includes("persona_beast_senpai") || tags.includes("persona_stench") || tags.includes("persona_shimokita_legend") || tags.includes("persona_beast_instinct")) {
+      return `下北澤這兩週仍是窄巷與汽笛，野獸先輩的味與危機一起來`;
     }
     if (tags.includes("persona_athlete") || tags.includes("persona_high_pressure")) {
       return `身子還撐得住，時代與階級的壓卻從精神帳上先扣`;

@@ -277,6 +277,8 @@ export class CenturyLifeLoop {
     this.engine = null;
     this.state = null;
     this.bound = false;
+    this._eggSeq = [];
+    this._eggTimer = null;
   }
 
   survivalCoefficient(age = this.age) {
@@ -335,7 +337,7 @@ export class CenturyLifeLoop {
     }
   }
 
-  newFile() {
+  newFile(overrides = null) {
     try {
       if (this.engine && !canBeginNewLife(this.engine)) {
         this.sync(this.engine.getGameState()).paint();
@@ -343,7 +345,10 @@ export class CenturyLifeLoop {
       }
       clearLifeSave();
       this.engine = new GameEngine();
-      const state = this.engine.initNewGame(specialOverridesFromLocation());
+      const state = this.engine.initNewGame({
+        ...specialOverridesFromLocation(),
+        ...(overrides || {}),
+      });
       closeHallOfFame();
       this.sync(state).paint();
       return state;
@@ -352,6 +357,62 @@ export class CenturyLifeLoop {
       showBootError(error);
       return null;
     }
+  }
+
+  /** Debug / egg: force Tadokoro Koji with permanent meme tag lock. */
+  forceTadokoroEgg() {
+    try {
+      clearLifeSave();
+      this.engine = new GameEngine();
+      const state = this.engine.initNewGame({ specialPresetId: "tadokoro_koji" });
+      closeHallOfFame();
+      this.sync(state).paint();
+      return state;
+    } catch (error) {
+      console.error("LifeSim: 田所彩蛋開檔失敗", error);
+      showBootError(error);
+      return null;
+    }
+  }
+
+  _clearEggSeq() {
+    this._eggSeq = [];
+    if (this._eggTimer) {
+      clearTimeout(this._eggTimer);
+      this._eggTimer = null;
+    }
+  }
+
+  _armEggSeqTimeout() {
+    if (this._eggTimer) clearTimeout(this._eggTimer);
+    this._eggTimer = setTimeout(() => {
+      this._eggSeq = [];
+      this._eggTimer = null;
+    }, 2800);
+  }
+
+  /**
+   * Konami-style digit egg: 1-1-4-5-1-4.
+   * Tracks in parallel with choice hotkeys; completes → force Tadokoro.
+   */
+  _feedEggSeq(digit) {
+    const target = "114514";
+    const next = this._eggSeq.concat(String(digit));
+    const joined = next.join("");
+    if (target.startsWith(joined)) {
+      this._eggSeq = next;
+      this._armEggSeqTimeout();
+      if (joined === target) {
+        this._clearEggSeq();
+        this.forceTadokoroEgg();
+        return true;
+      }
+      return false;
+    }
+    this._eggSeq = digit === "1" ? ["1"] : [];
+    if (this._eggSeq.length) this._armEggSeqTimeout();
+    else this._clearEggSeq();
+    return false;
   }
 
   choose(index) {
@@ -419,6 +480,18 @@ export class CenturyLifeLoop {
     });
     document.addEventListener("keydown", (event) => {
       if (event.target && ["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
+      if (event.ctrlKey && event.shiftKey && (event.key === "Y" || event.code === "KeyY")) {
+        event.preventDefault();
+        this.forceTadokoroEgg();
+        return;
+      }
+      const digit = (/^[0-9]$/.test(event.key) && event.key)
+        || (event.code && event.code.startsWith("Digit") ? event.code.slice(5) : null)
+        || (event.code && event.code.startsWith("Numpad") && /^\d$/.test(event.code.slice(6)) ? event.code.slice(6) : null);
+      if (digit != null && this._feedEggSeq(digit)) {
+        event.preventDefault();
+        return;
+      }
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
       const choiceIndex = map[event.key] ?? map[event.code];
       if (choiceIndex == null) return;
@@ -463,7 +536,7 @@ let app = null;
 
 function exposeGlobals() {
   if (typeof window === "undefined") return;
-  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY };
+  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY, forceTadokoroEgg: () => app?.forceTadokoroEgg?.() };
   window.GameEngine = GameEngine;
   window.GenesisEngine = GenesisEngine;
   window.CenturyLifeLoop = CenturyLifeLoop;

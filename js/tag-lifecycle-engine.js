@@ -15,6 +15,8 @@ import { publicTagLabel } from "./data/ui-zh.js";
 import {
   addCharacterTag,
   characterHasTag,
+  ensurePermanentMemeTags,
+  isImmutableTag,
   patchCharacterTag,
   removeCharacterTag,
 } from "./tag-system.js";
@@ -50,6 +52,7 @@ function recordsOf(character) {
 function neverDecay(record) {
   const id = String(record?.id || "");
   if (!id) return true;
+  if (record?.permanent) return true;
   if (LOCKED_ACQUIRED.has(id)) return true;
   return NEVER_DECAY_PREFIXES.some((prefix) => id.startsWith(prefix));
 }
@@ -122,6 +125,7 @@ function decayRuleFor(record) {
 }
 
 function fadeRecord(character, record, state) {
+  if (isImmutableTag(character, record?.id) || record?.permanent) return;
   const data = { ...(record.data || {}), dormant: true, fadedAtTurn: state.turn, wasHidden: Boolean(record.hidden) };
   patchCharacterTag(character, record.id, { hidden: true, data });
   state.dormant[record.id] = true;
@@ -182,6 +186,7 @@ export function weeklyTagLifecycle(character, ctx = {}, extras = {}) {
   if (!character) {
     return { changed: [], notes: [], tagsGained: [], tagsLost: [], stageChanged: false };
   }
+  const memeLock = ensurePermanentMemeTags(character);
   const state = seedTagLifecycle(character, extras.turnCount ?? ctx.turnCount ?? stateTurn(character));
   if (!extras.stageOnly) state.turn = Number(state.turn || 0) + 1;
   const option = extras.option || ctx.option || {};
@@ -208,6 +213,11 @@ export function weeklyTagLifecycle(character, ctx = {}, extras = {}) {
 
   for (const record of recordsOf(character)) {
     if (!record?.id) continue;
+    if (isImmutableTag(character, record.id) || record.permanent) {
+      state.idle[record.id] = 0;
+      state.touched[record.id] = state.turn;
+      continue;
+    }
     const rule = decayRuleFor(record);
     if (!rule) continue;
     if (state.touched[record.id] === state.turn) continue;
@@ -245,11 +255,12 @@ export function weeklyTagLifecycle(character, ctx = {}, extras = {}) {
     if (rule.note) notes.push(rule.note);
   }
 
+  ensurePermanentMemeTags(character);
   state.lastStageId = stageId || state.lastStageId;
   return {
     changed,
     notes: [...new Set(notes)],
-    tagsGained,
+    tagsGained: [...tagsGained, ...(memeLock.restored || [])],
     tagsLost,
     stageChanged,
     crisis,
@@ -257,6 +268,7 @@ export function weeklyTagLifecycle(character, ctx = {}, extras = {}) {
     tagDecayEngine: true,
     tagForgetting: true,
     tagEvolution: true,
+    memeTagLock: Boolean(character.memeTagLock),
   };
 }
 

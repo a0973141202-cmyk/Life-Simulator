@@ -21,7 +21,7 @@ import { emptyWorldEventState } from "./world-event-engine.js";
 import { emptyHistoryState } from "./history-engine.js";
 import { emptyLifeProgress } from "./life-stage-manager.js";
 import { chance, createRng, pick, pickWeighted, randInt, randomSeed } from "./rng.js";
-import { TagStore, uniqueTags } from "./tag-system.js";
+import { TagStore, ensurePermanentMemeTags, uniqueTags } from "./tag-system.js";
 import { zhClimate, zhRegion } from "./data/ui-zh.js";
 import { formatCulturalName, composeCulturalName, resolveNamingEthnicity } from "./naming-engine.js";
 import { buildConstitution } from "./constitution.js";
@@ -922,7 +922,9 @@ export class GenesisEngine {
         traitCatalogSize: this.registry.traits.length,
         birthIso: birthDate.iso,
         specialPresetId: specialRoll.hit ? specialRoll.preset.id : null,
-        specialPresetOdds: "1/10000",
+        specialPresetOdds: specialRoll.hit
+          ? `1/${specialRoll.preset.oddsDenominator || 10000}`
+          : "1/10000",
       },
     };
 
@@ -931,7 +933,10 @@ export class GenesisEngine {
     syncWealthTags(character);
     seedNpcNetwork(character, rng);
     syncKinTags(character, { year: birthYear });
-    if (specialRoll.hit) stampSpecialOpening(character, specialRoll.preset);
+    if (specialRoll.hit) {
+      stampSpecialOpening(character, specialRoll.preset);
+      ensurePermanentMemeTags(character);
+    }
     return character;
   }
 

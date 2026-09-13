@@ -1,12 +1,34 @@
 /**
  * Ultra-rare hardcoded character presets.
- * Each preset owns one exclusive 1/10000 integer bin.
+ * Exact-odds presets use oddsDenominator (mutually exclusive via LCM sample space).
+ * Legacy presets keep exclusive 1/10000 integer bins.
  * Codes unlock a preset without waiting for the roll.
  */
 
 export const SPECIAL_PRESET_ODDS = Object.freeze({
   denominator: 10000,
 });
+
+function gcd(a, b) {
+  let x = Math.abs(Number(a) || 0);
+  let y = Math.abs(Number(b) || 0);
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+}
+
+function lcm(a, b) {
+  const x = Math.abs(Number(a) || 1);
+  const y = Math.abs(Number(b) || 1);
+  return Math.abs((x / gcd(x, y)) * y);
+}
+
+function lcmMany(values) {
+  return (values || []).reduce((acc, n) => lcm(acc, n), 1);
+}
 
 /** Hidden unlock phrases → preset id (matched case-insensitively / trimmed). */
 export const SPECIAL_PRESET_CODES = Object.freeze({
@@ -18,6 +40,24 @@ export const SPECIAL_PRESET_CODES = Object.freeze({
   tadokoro: "tadokoro_koji",
   "田所浩二": "tadokoro_koji",
   "田所": "tadokoro_koji",
+  "114514": "tadokoro_koji",
+  billy: "billy_herrington",
+  herrington: "billy_herrington",
+  "billy herrington": "billy_herrington",
+  aniki: "billy_herrington",
+  "兄貴": "billy_herrington",
+  "比利": "billy_herrington",
+  "海靈頓": "billy_herrington",
+  "比利·海靈頓": "billy_herrington",
+  "比利海靈頓": "billy_herrington",
+  ricardo: "ricardo_milos",
+  milos: "ricardo_milos",
+  "ricardo milos": "ricardo_milos",
+  "里卡多": "ricardo_milos",
+  "米洛斯": "ricardo_milos",
+  "里卡多·米洛斯": "ricardo_milos",
+  "里卡多米洛斯": "ricardo_milos",
+  banana: "ricardo_milos",
 });
 
 export const HUANG_PERSONA_TAGS = Object.freeze([
@@ -38,11 +78,13 @@ export const ZHANG_PERSONA_TAGS = Object.freeze([
 ]);
 
 export const TADOKORO_PERSONA_TAGS = Object.freeze([
-  Object.freeze({ id: "persona_shimokita_legend", label: "下北澤傳奇", category: "persona", source: "special_preset" }),
-  Object.freeze({ id: "persona_beast_instinct", label: "野獸直覺", category: "persona", source: "special_preset" }),
-  Object.freeze({ id: "persona_athlete", label: "體育生", category: "persona", source: "special_preset" }),
-  Object.freeze({ id: "persona_high_pressure", label: "高壓生存", category: "persona", source: "special_preset" }),
-  Object.freeze({ id: "persona_abyss_magnet", label: "深淵磁場", category: "persona", source: "special_preset" }),
+  Object.freeze({ id: "persona_shimokita_legend", label: "下北澤傳奇", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_beast_instinct", label: "野獸直覺", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_beast_senpai", label: "野獸先輩", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_stench", label: "惡臭", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_athlete", label: "體育生", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_high_pressure", label: "高壓生存", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_abyss_magnet", label: "深淵磁場", category: "persona", source: "special_preset", permanent: true }),
 ]);
 
 export const HUANG_PINJUN_PRESET = Object.freeze({
@@ -79,9 +121,10 @@ export const ZHANG_JUNBIN_PRESET = Object.freeze({
   }),
 });
 
+/** Exact 1/114514. */
 export const TADOKORO_KOJI_PRESET = Object.freeze({
   id: "tadokoro_koji",
-  rollBin: 2,
+  oddsDenominator: 114514,
   name: "田所浩二",
   gender: "male",
   settlementId: "shimokitazawa",
@@ -97,19 +140,125 @@ export const TADOKORO_KOJI_PRESET = Object.freeze({
   }),
 });
 
+export const BILLY_PERSONA_TAGS = Object.freeze([
+  Object.freeze({ id: "persona_muscle_hunk", label: "肌肉猛男", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_wrestler", label: "摔角手", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_aniki", label: "兄貴精神", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_cheerful", label: "樂觀開朗", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_born_leader", label: "天生領袖", category: "persona", source: "special_preset", permanent: true }),
+]);
+
+/** William Glen Harold "Billy" Herrington — exact 1/10000. */
+export const BILLY_HERRINGTON_PRESET = Object.freeze({
+  id: "billy_herrington",
+  oddsDenominator: 10000,
+  name: "比利·海靈頓",
+  fullName: "William Glen Harold \"Billy\" Herrington",
+  gender: "male",
+  settlementId: "newyork",
+  familyClass: "worker",
+  birthYear: 1969,
+  birthDate: "1969-07-14",
+  themeClass: "preset-aniki-archive",
+  statsBoost: Object.freeze({ health: 16, sanity: 4 }),
+  tags: BILLY_PERSONA_TAGS.slice(),
+  opening: Object.freeze({
+    birth: "戶籍把比利·海靈頓寫在一九六九年的紐約。移民碼頭的潮氣、地鐵鐵軌與體育館更衣室的汗味比摩天樓更早把他圍住。William Glen Harold 這個長名在街上縮成 Billy，身子卻一天天往摔角墊與鐵杠上長。",
+    awakening: "五歲起他就笑得響、站得直。肌肉與摔角的路子先寫進走路的方式；對同伴像兄貴一樣肯挺、肯喊，樂觀不散，人群裏也自然有人跟他走。",
+    weekLead: "紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。比利·海靈頓按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
+    outline: "newyork|billy_herrington|aniki",
+  }),
+});
+
+export const RICARDO_PERSONA_TAGS = Object.freeze([
+  Object.freeze({ id: "persona_banana_legend", label: "香蕉傳奇", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_absolute_freedom", label: "絕對自由", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_meme_dancer", label: "迷因舞王", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_brazil_passion", label: "巴西熱情", category: "persona", source: "special_preset", permanent: true }),
+]);
+
+/** Ricardo Milos — Rio de Janeiro, exact 1/10000. */
+export const RICARDO_MILOS_PRESET = Object.freeze({
+  id: "ricardo_milos",
+  oddsDenominator: 10000,
+  name: "里卡多·米洛斯",
+  fullName: "Ricardo Milos",
+  gender: "male",
+  settlementId: "rio",
+  familyClass: "worker",
+  themeClass: "preset-rio-banana",
+  tags: RICARDO_PERSONA_TAGS.slice(),
+  opening: Object.freeze({
+    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱風與港口的節奏比官署更早把他叫醒。Ricardo 這個名字在街頭縮成一身自由的步伐。",
+    awakening: "五歲起他就把熱情踩進每一步。香蕉傳奇與迷因舞步寫在走路的方式裏；絕對自由不換，巴西的熱也不散。",
+    weekLead: "里約這兩週仍是山海風與街頭節奏。里卡多·米洛斯按傳奇那一套走路：該舞就舞，該自由就自由。",
+    outline: "rio|ricardo_milos|banana",
+  }),
+});
+
 export const SPECIAL_PRESETS = Object.freeze({
   [HUANG_PINJUN_PRESET.id]: HUANG_PINJUN_PRESET,
   [ZHANG_JUNBIN_PRESET.id]: ZHANG_JUNBIN_PRESET,
   [TADOKORO_KOJI_PRESET.id]: TADOKORO_KOJI_PRESET,
+  [BILLY_HERRINGTON_PRESET.id]: BILLY_HERRINGTON_PRESET,
+  [RICARDO_MILOS_PRESET.id]: RICARDO_MILOS_PRESET,
 });
 
-/** Exclusive bins: each preset owns exactly one of 10000 slots. */
+/** Presets whose core persona tags are permanently locked for the whole run. */
+export const MEME_LOCK_PRESET_IDS = Object.freeze([
+  TADOKORO_KOJI_PRESET.id,
+  BILLY_HERRINGTON_PRESET.id,
+  RICARDO_MILOS_PRESET.id,
+]);
+
+export const MEME_LOCK_TAGS_BY_PRESET = Object.freeze({
+  [TADOKORO_KOJI_PRESET.id]: Object.freeze(TADOKORO_PERSONA_TAGS.map((tag) => tag.id)),
+  [BILLY_HERRINGTON_PRESET.id]: Object.freeze(BILLY_PERSONA_TAGS.map((tag) => tag.id)),
+  [RICARDO_MILOS_PRESET.id]: Object.freeze(RICARDO_PERSONA_TAGS.map((tag) => tag.id)),
+});
+
+export function memeLockTagDefsFor(presetId) {
+  const preset = SPECIAL_PRESETS[presetId];
+  if (!preset || !MEME_LOCK_PRESET_IDS.includes(presetId)) return [];
+  return (preset.tags || []).slice();
+}
+
+export function memeLockTagIdsFor(presetId) {
+  return MEME_LOCK_TAGS_BY_PRESET[presetId] ? MEME_LOCK_TAGS_BY_PRESET[presetId].slice() : [];
+}
+
+/** Legacy exclusive bins (presets without oddsDenominator only). */
 export const SPECIAL_ROLL_TABLE = Object.freeze(
   Object.values(SPECIAL_PRESETS)
+    .filter((preset) => preset.oddsDenominator == null && preset.rollBin != null)
     .slice()
     .sort((a, b) => a.rollBin - b.rollBin)
     .map((preset) => Object.freeze({ bin: preset.rollBin, preset })),
 );
+
+/**
+ * Exact-odds legends: mutually exclusive integer ranges on LCM(denominators).
+ * P(preset) = width/shared = 1/oddsDenominator exactly.
+ */
+export const SPECIAL_EXACT_ODDS_TABLE = (() => {
+  const list = Object.values(SPECIAL_PRESETS).filter((preset) => preset.oddsDenominator > 0);
+  if (!list.length) return Object.freeze({ shared: 1, rows: Object.freeze([]) });
+  const shared = lcmMany(list.map((preset) => preset.oddsDenominator));
+  const sorted = list.slice().sort((a, b) => (
+    a.oddsDenominator - b.oddsDenominator || String(a.id).localeCompare(String(b.id))
+  ));
+  let cursor = 0;
+  const rows = sorted.map((preset) => {
+    const width = shared / preset.oddsDenominator;
+    if (!Number.isInteger(width)) {
+      throw new Error(`special preset odds width not integer: ${preset.id}`);
+    }
+    const row = Object.freeze({ start: cursor, width, preset });
+    cursor += width;
+    return row;
+  });
+  return Object.freeze({ shared, rows: Object.freeze(rows) });
+})();
 
 export function resolveSpecialPresetCode(raw) {
   const key = String(raw || "").trim();
@@ -124,9 +273,15 @@ export function resolveSpecialPresetCode(raw) {
   return "";
 }
 
+export function formatSpecialPresetOdds(preset) {
+  if (!preset) return "";
+  if (preset.oddsDenominator > 0) return `1/${preset.oddsDenominator}`;
+  return `1/${SPECIAL_PRESET_ODDS.denominator}`;
+}
+
 /**
- * Exact 1/10000 per preset using integer bins (no floating drift).
  * Forced via overrides.specialPresetId / specialCode / unlockCode.
+ * Exact-odds presets hit via LCM table; legacy presets keep 1/10000 bins.
  */
 export function rollSpecialPreset(rng, overrides = {}) {
   const coded = resolveSpecialPresetCode(
@@ -138,7 +293,16 @@ export function rollSpecialPreset(rng, overrides = {}) {
   if (overrides.skipSpecialPreset) {
     return { hit: false, preset: null, forced: false };
   }
-  const roll = Math.floor((typeof rng === "function" ? rng() : Math.random()) * SPECIAL_PRESET_ODDS.denominator);
+  const r = typeof rng === "function" ? rng : Math.random;
+  if (SPECIAL_EXACT_ODDS_TABLE.rows.length) {
+    const exactRoll = Math.floor(r() * SPECIAL_EXACT_ODDS_TABLE.shared);
+    const exactHit = SPECIAL_EXACT_ODDS_TABLE.rows.find(
+      (row) => exactRoll >= row.start && exactRoll < row.start + row.width,
+    );
+    if (exactHit) return { hit: true, preset: exactHit.preset, forced: false };
+  }
+  if (!SPECIAL_ROLL_TABLE.length) return { hit: false, preset: null, forced: false };
+  const roll = Math.floor(r() * SPECIAL_PRESET_ODDS.denominator);
   const row = SPECIAL_ROLL_TABLE.find((entry) => entry.bin === roll);
   if (!row) return { hit: false, preset: null, forced: false };
   return { hit: true, preset: row.preset, forced: false };
@@ -155,6 +319,12 @@ export function applySpecialPresetOverrides(overrides = {}, preset) {
     tags: [...(overrides.tags || []), ...(preset.tags || [])],
     specialPresetId: preset.id,
   };
+  if (preset.birthYear != null && overrides.birthYear == null && !overrides.birthDate) {
+    next.birthYear = preset.birthYear;
+  }
+  if (preset.birthDate && !overrides.birthDate) {
+    next.birthDate = preset.birthDate;
+  }
   if (preset.statsBoost && !overrides.stats) {
     next.statsBoost = { ...(preset.statsBoost || {}) };
   }
@@ -165,9 +335,11 @@ export function stampSpecialOpening(character, preset) {
   if (!character || !preset?.opening) return character;
   character.specialPresetId = preset.id;
   character.specialPresetLabel = preset.name;
+  character.specialPresetFullName = preset.fullName || preset.name;
   character.specialThemeClass = preset.themeClass || "";
   if (preset.statsBoost && character.stats) {
     for (const [key, delta] of Object.entries(preset.statsBoost)) {
+      if (key !== "health" && key !== "sanity") continue;
       const cur = Number(character.stats[key] ?? 50);
       character.stats[key] = Math.max(1, Math.min(100, cur + Number(delta || 0)));
     }
@@ -185,5 +357,9 @@ export function stampSpecialOpening(character, preset) {
     eventOutlines: [],
     eraName: "",
   };
+  if (MEME_LOCK_PRESET_IDS.includes(preset.id)) {
+    character.memeTagLock = true;
+    character.permanentTagIds = memeLockTagIdsFor(preset.id);
+  }
   return character;
 }
