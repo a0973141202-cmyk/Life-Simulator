@@ -1,31 +1,48 @@
 /**
  * Strict life-band gates for events and choices.
- * Play starts at 5; ages 5–6 stay in early childhood. Society entry is 18.
+ * Play starts at 5; ages 5–6 stay in early childhood.
+ * Option bands: childhood 5–12, teen 13–19, mature adult 20+.
+ * Society entry (career) remains 18; hard adult option voice starts at 20.
  */
 
 export const EARLY_CHILD_MAX = 6;
+export const CHILDHOOD_MAX = 12;
 export const STUDENT_MIN = 7;
 export const STUDENT_MAX = 17;
+export const TEEN_MAX = 19;
 export const ADULT_MIN = 18;
+export const MATURE_ADULT_MIN = 20;
 
 export const AGE_BANDS = Object.freeze({
   early_child: { id: "early_child", label: "幼兒期", min: 0, max: EARLY_CHILD_MAX },
   student: { id: "student", label: "學生期", min: STUDENT_MIN, max: STUDENT_MAX },
-  adult: { id: "adult", label: "成年期", min: ADULT_MIN, max: 120 },
+  teen: { id: "teen", label: "青少年期", min: 13, max: TEEN_MAX },
+  adult: { id: "adult", label: "成年期", min: MATURE_ADULT_MIN, max: 120 },
 });
 
 export const CONTENT_LANES = Object.freeze({
   family: { min: 0, max: 120 },
-  play: { min: 0, max: 12 },
+  play: { min: 0, max: CHILDHOOD_MAX },
   illness: { min: 0, max: 120 },
   survival: { min: 0, max: 120 },
-  school: { min: STUDENT_MIN, max: STUDENT_MAX },
-  adolescent: { min: STUDENT_MIN, max: STUDENT_MAX },
+  school: { min: STUDENT_MIN, max: TEEN_MAX },
+  adolescent: { min: 13, max: TEEN_MAX },
   adult_work: { min: ADULT_MIN, max: 120 },
   adult_drink: { min: ADULT_MIN, max: 120 },
   adult_romance: { min: ADULT_MIN, max: 120 },
   adult_society: { min: ADULT_MIN, max: 120 },
 });
+
+/** Childhood / minor household voice — banned in option text at age ≥ 20. */
+export const MATURE_BANNED_CHILD_VOICE = Object.freeze([
+  /會被喊回來|趕在大人喊之前|趁大人沒喊/,
+  /把門栓插上，聽見拍門先裝作沒人/,
+  /把水打回來、把碗洗乾淨/,
+  /用腳把家的邊界走清楚/,
+  /帶著弟妹|看弟妹|把弟妹/,
+  /不許開門|不許玩火|學步|玩伴|捉迷藏|石板|戒尺|書包/,
+  /最小的那碗|屋裏的口令把/,
+]);
 
 /** Player-as-adult-actor. Household alcohol / war survival as victim is not these. */
 export const ADULT_WORK_PATTERNS = Object.freeze([

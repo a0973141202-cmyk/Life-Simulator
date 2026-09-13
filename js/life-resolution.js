@@ -1,11 +1,13 @@
 /**
  * Life-end dossier. Numbers come only from the live clock.
  * Session-close copy may name the closed-beta age cap when that is the real trigger.
+ * Meme legends use legendary_finale after their ~13-year playthrough.
  * Death copy names age, year, place, and a concrete cause — no riddles.
  */
 import { scrubPublicText } from "./data/public-text.js";
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { monitorPublicText } from "./text-monitor.js";
+import { isMemeLegendCharacter, memeLegendaryFinaleCause } from "./meme-chronicle.js";
 
 function placeOf(character) {
   return character?.birthplaceLabel
@@ -176,6 +178,10 @@ export function composeLifeResolution({
     title = "死亡證明";
     kicker = "當事人已死";
     cause = deathCause(character, time, reason, detail);
+  } else if (kind === "legendary_finale" || (kind === "session_close" && isMemeLegendCharacter(character))) {
+    title = "傳奇生涯謝幕";
+    kicker = "迷因檔案合卷";
+    cause = memeLegendaryFinaleCause(character, time);
   } else if (betaClose) {
     title = "封閉測試結算";
     kicker = "測試階段告一段落";

@@ -45,6 +45,8 @@ import { modifyResolutionForSchool, pickSchoolIncident, renderSchoolIncident } f
 import { modifyResolutionForCaste } from "./perp-caste-engine.js";
 import { modifyResolutionForAdult, pickAdultIncident, renderAdultIncident } from "./adult-engine.js";
 import { attachWorldContext, modifyResolutionForWorld, pickWorldEvent, renderWorldEvent } from "./world-event-engine.js";
+import { finalizeWorldIncident, evaluateIndustryImpact } from "./world-impact-engine.js";
+import { applyCausalShockBias } from "./causal-feedback-engine.js";
 import { attachUpheaval, publicUpheavalView } from "./upheaval-engine.js";
 import {
   figuresPresent,
@@ -175,6 +177,12 @@ function cloneOption(rng, action, index, ctx = {}) {
     exclusiveFill: Boolean(action.exclusiveFill),
     liveFollowUp: action.liveFollowUp || "",
     liveTagMint: Boolean(action.liveTagMint),
+    liveWorldMint: Boolean(action.liveWorldMint),
+    dynamicWorldMint: Boolean(action.dynamicWorldMint),
+    industryPolarity: action.industryPolarity || null,
+    industrySector: action.industrySector || null,
+    worldThreads: action.worldThreads ? action.worldThreads.slice() : (action.threads || []).slice(),
+    threads: action.threads ? action.threads.slice() : [],
     zeroHardcodedTemplates: Boolean(action.zeroHardcodedTemplates),
     driverTags: (action.driverTags || []).slice(),
     wealthStake: Boolean(action.wealthStake),
@@ -354,6 +362,10 @@ export function generateTurn(rng, state) {
   attachWorldContext(ctx);
   attachUpheaval(ctx);
   attachEraCrisis(ctx);
+  ctx.industryImpact = evaluateIndustryImpact(ctx, {
+    threads: ctx.upheaval?.threads || [],
+  });
+  applyCausalShockBias(ctx.character, ctx.year ?? ctx.time?.year, ctx.historyIds || []);
   pressure = crisisPressure(ledger, {
     upheavalScore: ctx.upheaval?.score || 0,
     worldPressure: character.worldEventState?.pressure || 0,
@@ -387,8 +399,16 @@ export function generateTurn(rng, state) {
   const acceptLocked = (incident) => {
     if (!incident?.options || incident.options.length < 3) return null;
     if (!incidentAllowed(incident, ctx)) return null;
-    if (optionExcluded(character, incident.id, incident.fact || incident.id)) return null;
+    const isLiveWorld = Boolean(
+      incident.dynamicWorldMint
+      || incident.options.every((row) => row.liveWorldMint || row.dynamicWorldMint),
+    );
+    if (!isLiveWorld && optionExcluded(character, incident.id, incident.fact || incident.id)) return null;
     if (!eraPlaceAllows(incident, ctx)) return null;
+    // Live world mint already passed industry/era gates — do not drop via catalog boundary filters.
+    if (isLiveWorld) {
+      return { ...incident, options: incident.options.slice(0, 3) };
+    }
     if (!contextAllowsOption({
       text: [incident.fact, incident.title, incident.procedure].filter(Boolean).join("\n"),
       hooks: incident.hooks,
@@ -427,11 +447,28 @@ export function generateTurn(rng, state) {
   const wealthCrisis = wealthRaw && wealthRaw.options?.length >= 3 ? wealthRaw : null;
   const wealthLocked = Boolean(wealthCrisis);
   if (wealthLocked) consumeWealthLock(character, wealthCrisis, ctx.turnCount || 0);
-  const kinRaw = (breakdownLocked || wealthLocked) ? null : pickKinCrisis(rng, ctx);
+
+  // Evidence: kin/breakdown always blocked world picks. Prefer world when upheaval/industry is live.
+  const upheavalPrefersWorld = (ctx.upheaval?.tier || 0) >= 1
+    || (ctx.industryImpact && ctx.industryImpact.polarity !== "neutral");
+  const worldCrisisRawPreferred = (breakdownLocked || wealthLocked || !upheavalPrefersWorld)
+    ? null
+    : pickWorldEvent(rng, ctx, { lock: "crisis" });
+  const worldCrisisPreferredFinal = worldCrisisRawPreferred
+    ? finalizeWorldIncident(rng, worldCrisisRawPreferred, ctx)
+    : null;
+  let worldCrisis = acceptLocked(worldCrisisPreferredFinal);
+
+  const kinRaw = (breakdownLocked || wealthLocked || worldCrisis) ? null : pickKinCrisis(rng, ctx);
   const kinCrisis = kinRaw && kinRaw.options?.length >= 3 ? kinRaw : null;
   const kinLocked = Boolean(kinCrisis);
   if (kinLocked) consumeKinLock(character, kinCrisis, ctx.turnCount || 0);
-  const worldCrisis = acceptLocked((breakdownLocked || wealthLocked || kinLocked) ? null : pickWorldEvent(rng, ctx, { lock: "crisis" }));
+
+  const worldCrisisRaw = (breakdownLocked || wealthLocked || kinLocked || worldCrisis)
+    ? null
+    : pickWorldEvent(rng, ctx, { lock: "crisis" });
+  const worldCrisisFinal = worldCrisisRaw ? finalizeWorldIncident(rng, worldCrisisRaw, ctx) : null;
+  if (!worldCrisis) worldCrisis = acceptLocked(worldCrisisFinal);
   const worldCrisisLocked = Boolean(worldCrisis);
   const hardLock = breakdownLocked || wealthLocked || kinLocked;
   const turningPoint = !hardLock && !worldCrisisLocked && ctx.dueTurningPoint?.options?.length >= 3
@@ -453,10 +490,11 @@ export function generateTurn(rng, state) {
     (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked) ? null : pickSchoolIncident(rng, ctx),
   );
   const schoolLocked = Boolean(schoolIncident);
+  const worldSceneRaw = (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked)
+    ? null
+    : pickWorldEvent(rng, ctx, { lock: "scene" });
   const worldScene = acceptLocked(
-    (hardLock || worldCrisisLocked || turningLocked || figureCrisisLocked || adultLocked || schoolLocked)
-      ? null
-      : pickWorldEvent(rng, ctx, { lock: "scene" }),
+    worldSceneRaw ? finalizeWorldIncident(rng, worldSceneRaw, ctx) : null,
   );
   const worldSceneLocked = Boolean(worldScene);
   const figureSceneLocked = Boolean(
@@ -497,17 +535,49 @@ export function generateTurn(rng, state) {
   ctx.liveTagMint = true;
 
   const sourceActions = factLocked ? lockedIncident.options : [];
-  const { kept: lockedKept } = filterActionsByBoundary(
-    (sourceActions || []).filter((option) => (
-      meetsPrerequisites(option, ctx)
-      && !optionExcluded(character, option.id, option.text)
-    )),
-    ctx,
-  );
+  const liveWorldOptions = (sourceActions || []).filter((row) => row.liveWorldMint || row.dynamicWorldMint);
+  let lockedKept;
+  if (worldLocked && liveWorldOptions.length >= 3) {
+    lockedKept = liveWorldOptions.slice(0, 3);
+  } else {
+    const filtered = filterActionsByBoundary(
+      (sourceActions || []).filter((option) => (
+        meetsPrerequisites(option, ctx)
+        && !optionExcluded(character, option.id, option.text)
+      )),
+      ctx,
+    );
+    lockedKept = filtered.kept;
+  }
   const useLock = factLocked && lockedKept.length >= 3;
   let sourcePool;
   if (useLock) {
-    sourcePool = remintLockedTriadText(rng, lockedKept.slice(0, 3), ctx);
+    // World incidents already carry live industry-minted options — do not overwrite with generic remint.
+    if (worldLocked && lockedKept.every((row) => row.liveWorldMint || row.dynamicWorldMint)) {
+      sourcePool = lockedKept.slice(0, 3);
+    } else {
+      // Replace catalog option mechanics with live tag mint; keep only lock linkage flags.
+      const live = mintTagDrivenTriad(rng, ctx);
+      sourcePool = live.slice(0, 3).map((opt, index) => {
+        const locked = lockedKept[index] || {};
+        return {
+          ...opt,
+          breakdownIncident: Boolean(locked.breakdownIncident),
+          breakdownIncidentId: locked.breakdownIncidentId || null,
+          kinCrisis: Boolean(locked.kinCrisis),
+          wealthCrisis: Boolean(locked.wealthCrisis),
+          schoolIncident: Boolean(locked.schoolIncident),
+          adultIncident: Boolean(locked.adultIncident),
+          figureEncounter: Boolean(locked.figureEncounter),
+          worldEvent: Boolean(locked.worldEvent || worldLocked),
+          worldEventId: locked.worldEventId || (worldLocked ? worldIncident?.id : null),
+          worldKind: locked.worldKind || (worldLocked ? worldIncident?.kind : null),
+          zeroHardcodedTemplates: true,
+          liveTagMint: true,
+          id: `live_${locked.id || opt.id}`,
+        };
+      });
+    }
   } else {
     sourcePool = mintTagDrivenTriad(rng, ctx);
     if (canMintWealthStake(ctx) && sourcePool.length >= 3) {

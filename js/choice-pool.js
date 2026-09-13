@@ -82,6 +82,22 @@ export function ensureChoiceMemory(character, stageId = "") {
   return memory;
 }
 
+/**
+ * Force option-generator age weights onto the live life stage (legendary 24+ spawn).
+ * Clears childhood stage stems so the first triad cannot inherit awakening pools.
+ */
+export function resetOptionAgeWeights(character, ageYears = 0, stageId = "") {
+  if (!character) return emptyChoiceMemory();
+  const stage = stageId || `age_${Math.max(0, Math.floor(Number(ageYears) || 0))}`;
+  character.choiceMemory = {
+    ...emptyChoiceMemory(),
+    stageId: stage,
+    ageAnchor: Math.max(0, Math.floor(Number(ageYears) || 0)),
+  };
+  character.optionAgeAnchor = Math.max(0, Math.floor(Number(ageYears) || 0));
+  return character.choiceMemory;
+}
+
 function pushUnique(list, value, cap) {
   if (!value) return;
   const at = list.indexOf(value);

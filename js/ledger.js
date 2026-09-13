@@ -17,10 +17,6 @@ import { addCharacterTag, characterHasTag, removeCharacterTag } from "./tag-syst
 import { exposeSocialMeters, followSocialMeters, syncSocialTags } from "./social-feedback.js";
 import { applyWealthDelta, ensureWealth } from "./wealth-engine.js";
 
-// #region agent log
-fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"ledger.js:import",message:"ledger-module-evaluating",data:{ok:true},timestamp:Date.now(),hypothesisId:"A"})}).catch(()=>{});
-// #endregion
-
 function clampMeter(value) {
   return Math.max(LEDGER_MIN, Math.min(LEDGER_MAX, Math.round(value)));
 }
@@ -116,9 +112,6 @@ export function applyLedgerDeltas(ledger, deltas = {}, time = {}, note = "") {
 }
 
 export function applyHiddenOutcome(character, hidden = {}, time = {}) {
-  // #region agent log
-  fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"ledger.js:applyHiddenOutcome",message:"applyHiddenOutcome-defined",data:{hiddenKeys:Object.keys(hidden||{})},timestamp:Date.now(),hypothesisId:"A"})}).catch(()=>{});
-  // #endregion
   if (!character || !hidden) return null;
   const meansDelta = Number(hidden.means || 0);
   if (meansDelta) {

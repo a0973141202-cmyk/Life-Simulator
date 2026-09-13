@@ -156,7 +156,11 @@ export {
 export { canBeginNewLife, lifeIsActive, refuseNewLife } from "./js/life-session.js";
 export {
   SAVE_KEY,
+  SAVE_VERSION,
+  CLIENT_BUILD_KEY,
   HALL_KEY,
+  clientBootHints,
+  purgeStaleClientState,
   readLifeSave,
   writeLifeSave,
   clearLifeSave,
@@ -213,6 +217,23 @@ export { MORTALITY_HISTORY } from "./js/data/mortality-history.js";
 export { MORTALITY_COST_NOTE } from "./js/data/mortality-rules.js";
 
 export { pickWorldEvent, applyWorldEventChoice, weeklyWorldEventFallout, ensureWorldEventState, eventMatches, attachWorldContext } from "./js/world-event-engine.js";
+export {
+  evaluateIndustryImpact,
+  finalizeWorldIncident,
+  mintWorldEventTriad,
+  resolveCareerSector,
+} from "./js/world-impact-engine.js";
+export {
+  emptyCausalState,
+  ensureCausalState,
+  recordCausalEcho,
+  weeklyCausalTick,
+  causalIncidentWeight,
+} from "./js/causal-feedback-engine.js";
+export {
+  THREAD_SECTOR_POLARITY,
+  IMPACT_TAG_TILTS,
+} from "./js/data/world-industry-impact.js";
 export { WORLD_EVENTS } from "./js/data/world-events/catalog.js";
 export { WORLD_TAG_DATABASE } from "./js/data/world-event-tags.js";
 export { WORLD_COST_NOTE, WORLD_STANCE_NOTE } from "./js/data/world-event-rules.js";
@@ -238,7 +259,7 @@ import { GenesisEngine } from "./js/genesis.js";
 import { closeHallOfFame, openHallOfFame, renderLifeSim, showBootError } from "./js/ui.js";
 import { SHOW_REPUTATION_UI } from "./js/data/ui-config.js";
 import { canBeginNewLife } from "./js/life-session.js";
-import { SAVE_KEY, clearLifeSave, readLifeSave } from "./js/life-persist.js";
+import { SAVE_KEY, clearLifeSave, clientBootHints, purgeStaleClientState, readLifeSave } from "./js/life-persist.js";
 
 /** Hidden special presets via ?code= / ?unlock= / ?preset= (e.g. yajuu, 下北澤). */
 function specialOverridesFromLocation() {
@@ -280,6 +301,8 @@ export class CenturyLifeLoop {
     /** 114514 egg: digit sequence buffer; fires only on exact match. */
     this._inputSequence = "";
     this._lastKeyTime = Date.now();
+    /** After one successful unlock this session/life, refuse re-fire / overwrite. */
+    this._eggLock = false;
   }
 
   survivalCoefficient(age = this.age) {
@@ -330,6 +353,8 @@ export class CenturyLifeLoop {
       const engine = GameEngine.fromJSON(data);
       if (!engine?.character || !engine.clock) return null;
       this.engine = engine;
+      this._eggLock = engine.character?.specialPresetId === "tadokoro_koji";
+      this._clearEggBuffer();
       this.sync(engine.getGameState()).paint();
       return this.state;
     } catch (error) {
@@ -346,6 +371,8 @@ export class CenturyLifeLoop {
       }
       clearLifeSave();
       this.engine = new GameEngine();
+      this._eggLock = false;
+      this._clearEggBuffer();
       const state = this.engine.initNewGame({
         ...specialOverridesFromLocation(),
         ...(overrides || {}),
@@ -363,6 +390,12 @@ export class CenturyLifeLoop {
   /** Debug / egg: force Tadokoro Koji with permanent meme tag lock. */
   forceTadokoroEgg() {
     try {
+      const already = this.engine?.character?.specialPresetId === "tadokoro_koji" && !this.engine?.gameOver;
+      this._eggLock = true;
+      this._clearEggBuffer();
+      if (already) {
+        return this.engine.getGameState();
+      }
       clearLifeSave();
       this.engine = new GameEngine();
       const state = this.engine.initNewGame({ specialPresetId: "tadokoro_koji" });
@@ -382,29 +415,49 @@ export class CenturyLifeLoop {
 
   /**
    * Strict 114514 key buffer (idle-reset 2s).
-   * Appends only event.key digits; unlocks only when sequence === "114514".
-   * Returns true only when the egg fired.
+   * Prefix-only (no sliding window). Returns:
+   * - "fired" when egg unlocked
+   * - "pending" when digit consumed into a valid prefix (do not choose)
+   * - false when digit should fall through (or non-digit / locked)
    */
   _feedEggKeyBuffer(event) {
+    const EGG = "114514";
     const currentTime = Date.now();
-    if (currentTime - this._lastKeyTime > 2000) {
-      this._inputSequence = "";
+    if (currentTime - this._lastKeyTime > 2000 && this._inputSequence) {
+      this._clearEggBuffer();
     }
     this._lastKeyTime = currentTime;
 
-    if (!/^[0-9]$/.test(event.key)) return false;
-
-    this._inputSequence += event.key;
-    if (this._inputSequence.length > 6) {
-      this._inputSequence = this._inputSequence.slice(-6);
+    if (this._eggLock || (this.engine?.character?.specialPresetId === "tadokoro_koji" && !this.engine?.gameOver)) {
+      this._eggLock = true;
+      if (this._inputSequence) this._clearEggBuffer();
+      return false;
     }
 
-    // Must equal the full string — a lone "1" never unlocks.
-    if (this._inputSequence !== "114514") return false;
+    if (!/^[0-9]$/.test(event.key)) {
+      if (this._inputSequence) this._clearEggBuffer();
+      return false;
+    }
 
-    this._inputSequence = "";
-    this.triggerTadokoroKoji();
-    return true;
+    const next = this._inputSequence + event.key;
+    if (EGG.startsWith(next)) {
+      this._inputSequence = next;
+      if (next === EGG) {
+        this._eggLock = true;
+        this._clearEggBuffer();
+        this.triggerTadokoroKoji();
+        return "fired";
+      }
+      return "pending";
+    }
+
+    // Mismatch: hard reset. Restart only if this digit alone is a valid prefix.
+    if (EGG.startsWith(event.key)) {
+      this._inputSequence = event.key;
+      return "pending";
+    }
+    this._clearEggBuffer();
+    return false;
   }
 
   /** Alias for the egg unlock path — applies Tadokoro preset via initNewGame. */
@@ -440,9 +493,6 @@ export class CenturyLifeLoop {
     const button = document.getElementById("btn-new-file");
     if (!button) {
       console.error("LifeSim: 找不到 #btn-new-file");
-      // #region agent log
-      fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:bind",message:"bind-missing-button",data:{readyState:document.readyState},timestamp:Date.now(),hypothesisId:"D",runId:"post-fix"})}).catch(()=>{});
-      // #endregion
       return this;
     }
     button.hidden = true;
@@ -492,8 +542,9 @@ export class CenturyLifeLoop {
         this.triggerTadokoroKoji();
         return;
       }
-      // Exact "114514" only — never fire on a single "1".
-      if (this._feedEggKeyBuffer(event)) {
+      // Exact "114514" only — never fire on a single "1"; pending prefix blocks choose.
+      const eggFeed = this._feedEggKeyBuffer(event);
+      if (eggFeed === "fired" || eggFeed === "pending") {
         event.preventDefault();
         return;
       }
@@ -503,15 +554,13 @@ export class CenturyLifeLoop {
       const buttons = document.querySelectorAll("#choices-container .choice-btn");
       if (buttons[choiceIndex] && !buttons[choiceIndex].disabled) this.choose(choiceIndex);
     });
-    // #region agent log
-    fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:bind",message:"bind-ok",data:{bound:this.bound,hasButton:true},timestamp:Date.now(),hypothesisId:"D",runId:"post-fix"})}).catch(()=>{});
-    // #endregion
     return this;
   }
 
   mount() {
     this.bind();
     try {
+      purgeStaleClientState(clientBootHints());
       if (!this.restoreFile()) this.newFile();
     } catch (error) {
       showBootError(error);
@@ -541,7 +590,19 @@ let app = null;
 
 function exposeGlobals() {
   if (typeof window === "undefined") return;
-  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY, forceTadokoroEgg: () => app?.forceTadokoroEgg?.(), triggerTadokoroKoji: () => app?.triggerTadokoroKoji?.() };
+  window.LifeSim = {
+    GameEngine,
+    GenesisEngine,
+    CenturyLifeLoop,
+    app,
+    SHOW_REPUTATION_UI,
+    canBeginNewLife,
+    SAVE_KEY,
+    clearLifeSave,
+    purgeStaleClientState,
+    forceTadokoroEgg: () => app?.forceTadokoroEgg?.(),
+    triggerTadokoroKoji: () => app?.triggerTadokoroKoji?.(),
+  };
   window.GameEngine = GameEngine;
   window.GenesisEngine = GenesisEngine;
   window.CenturyLifeLoop = CenturyLifeLoop;
@@ -549,9 +610,6 @@ function exposeGlobals() {
 
 function startApp() {
   const missing = REQUIRED_DOM_IDS.filter((id) => !document.getElementById(id));
-  // #region agent log
-  fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:startApp",message:"startApp-enter",data:{readyState:document.readyState,missing,font:typeof getComputedStyle==="function"&&document.body?getComputedStyle(document.body).fontFamily:null,hiddenRep:SHOW_REPUTATION_UI===false},timestamp:Date.now(),hypothesisId:"F",runId:"post-fix"})}).catch(()=>{});
-  // #endregion
   if (missing.length) {
     console.error("LifeSim: 必要 DOM 節點尚未就緒或缺失", missing.map((id) => `#${id}`).join(", "));
   }
@@ -563,23 +621,13 @@ function startApp() {
     app = new CenturyLifeLoop();
     exposeGlobals();
     app.mount();
-    // #region agent log
-    fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:mount",message:"mount-ok",data:{ready:Boolean(app.state&&app.state.ready),choiceCount:(app.state&&app.state.currentEvent&&app.state.currentEvent.options||[]).length,choiceSample:((app.state&&app.state.currentEvent&&app.state.currentEvent.options)||[]).slice(0,3).map((row)=>String(row.text||"")),statKeys:Object.keys((app.state&&app.state.stats)||{})},timestamp:Date.now(),hypothesisId:"C",runId:"post-fix"})}).catch(()=>{});
-    // #endregion
   } catch (error) {
     console.error("LifeSim: 初始化失敗", error);
     showBootError(error);
-    // #region agent log
-    fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:mount",message:"mount-throw",data:{msg:String(error&&error.message||error),stack:String(error&&error.stack||"")},timestamp:Date.now(),hypothesisId:"C",runId:"post-fix"})}).catch(()=>{});
-    // #endregion
   }
 }
 
 exposeGlobals();
-
-// #region agent log
-fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"7687e1"},body:JSON.stringify({sessionId:"7687e1",location:"script.js:boot",message:"script-module-evaluated",data:{readyState:typeof document!=="undefined"?document.readyState:null,hasApp:Boolean(typeof document!=="undefined"&&document.getElementById("app")),ids:{year:Boolean(typeof document!=="undefined"&&document.getElementById("current-year")),health:Boolean(typeof document!=="undefined"&&document.getElementById("stat-health")),tags:Boolean(typeof document!=="undefined"&&document.getElementById("tags-container")),choices:Boolean(typeof document!=="undefined"&&document.getElementById("choices-container")),btn:Boolean(typeof document!=="undefined"&&document.getElementById("btn-new-file"))},appAlive:Boolean(app),hiddenRep:SHOW_REPUTATION_UI===false},timestamp:Date.now(),hypothesisId:"B"})}).catch(()=>{});
-// #endregion
 
 if (typeof document !== "undefined") {
   if (document.readyState === "loading") {

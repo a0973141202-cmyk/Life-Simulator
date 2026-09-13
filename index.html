@@ -201,47 +201,6 @@
   <noscript>
     <p class="noscript">本檔案庫需要啟用 JavaScript 才能開檔與推進期次。</p>
   </noscript>
-  <script>
-    // #region agent log
-    (function () {
-      const ingest = (message, data, hypothesisId) => {
-        fetch("http://127.0.0.1:7279/ingest/ef06ca9d-d21b-4fa2-ab19-0a6f383a196a", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "7687e1" },
-          body: JSON.stringify({
-            sessionId: "7687e1",
-            location: "index.html:inline",
-            message,
-            data,
-            timestamp: Date.now(),
-            hypothesisId,
-          }),
-        }).catch(() => {});
-      };
-      ingest("html-before-module", {
-        readyState: document.readyState,
-        hasApp: Boolean(document.getElementById("app")),
-        hasChoices: Boolean(document.getElementById("choices-container")),
-        hasYear: Boolean(document.getElementById("current-year")),
-        hasHealth: Boolean(document.getElementById("stat-health")),
-        hasTags: Boolean(document.getElementById("tags-container")),
-      }, "B");
-      window.addEventListener("error", (event) => {
-        ingest("window-error", {
-          msg: String(event.message || ""),
-          file: String(event.filename || ""),
-          line: event.lineno || 0,
-          col: event.colno || 0,
-        }, "A");
-      });
-      window.addEventListener("unhandledrejection", (event) => {
-        ingest("unhandledrejection", {
-          msg: String(event.reason && (event.reason.message || event.reason) || event.reason),
-        }, "A");
-      });
-    })();
-    // #endregion
-  </script>
-  <script type="module" src="./script.js?v=egg-114514-strict-2"></script>
+  <script type="module" src="./script.js?v=meme-13y-2"></script>
 </body>
 </html>

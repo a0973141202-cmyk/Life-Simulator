@@ -47,7 +47,7 @@ export function resolveDailyState(ctx) {
   const occ = ctx.character?.occupation || "";
   const education = ctx.character?.education || "none";
   const sector = occupationSectorOf(ctx);
-  const adult = age >= 18 && ctx.character?.socialPhase === "adult";
+  const adult = age >= 18;
 
   if (age >= 18 && (hasTag(ctx, "acquired_imprisoned") || /監|獄|imprison/.test(occ))) {
     return DAILY_STATES.prison;
@@ -81,6 +81,7 @@ export function resolveDailyState(ctx) {
   if (adult && (sector === "neet" || occ === "無業依附" || occ === "無" || occ === "")) {
     return DAILY_STATES.neet_depend;
   }
+  if (age >= 13 && age <= 19 && education !== "none" && age < 18) return DAILY_STATES.school_teen;
   if (age >= 13 && age <= 17) return DAILY_STATES.school_teen;
   if (age >= 7 && age <= 12 && education !== "none") return DAILY_STATES.school_child;
   if (age <= 12) return DAILY_STATES.home_child;
@@ -89,6 +90,7 @@ export function resolveDailyState(ctx) {
   }
   if (adult && sector === "labor") return DAILY_STATES.labor_legal;
   if (adult) return DAILY_STATES.labor_legal;
+  if (age >= 13) return DAILY_STATES.school_teen;
   return DAILY_STATES.home_child;
 }
 

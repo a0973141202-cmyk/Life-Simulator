@@ -18,6 +18,7 @@ import { emptySchoolState, rollSchoolClimate } from "./school-engine.js";
 import { emptyCasteState } from "./perp-caste-engine.js";
 import { emptyCareerState } from "./adult-engine.js";
 import { emptyWorldEventState } from "./world-event-engine.js";
+import { emptyCausalState } from "./causal-feedback-engine.js";
 import { emptyHistoryState } from "./history-engine.js";
 import { emptyLifeProgress } from "./life-stage-manager.js";
 import { chance, createRng, pick, pickWeighted, randInt, randomSeed } from "./rng.js";
@@ -783,6 +784,7 @@ export class GenesisEngine {
       casteState: emptyCasteState(),
       careerState: emptyCareerState(),
       worldEventState: emptyWorldEventState(),
+      causalState: emptyCausalState(),
       historyState: emptyHistoryState(),
       socialPhase: "minor",
       occupationId: null,
@@ -841,6 +843,9 @@ export class GenesisEngine {
         noHaloMortality: true,
         worldEventEngine: true,
         worldEventContextual: true,
+        industryImpactEngine: true,
+        causalFeedbackLoop: true,
+        dynamicWorldMint: true,
         figureEngine: true,
         butterflyEngine: true,
         organicBloodlineChoices: true,

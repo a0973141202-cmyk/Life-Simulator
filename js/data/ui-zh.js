@@ -154,6 +154,9 @@ export const TAG_ID_ZH = Object.freeze({
   persona_meme_dancer: "迷因舞王",
   persona_brazil_samba: "巴西森巴",
   persona_invincible_smile: "無敵笑容",
+  world_ride_wave: "順勢搭車",
+  world_shock_scar: "衝擊疤",
+  world_shock_brace: "硬扛備援",
 });
 
 const HAN_RE = /[\u4e00-\u9fff]/;

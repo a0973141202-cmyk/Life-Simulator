@@ -216,6 +216,9 @@ export const TAG_GLOSS = Object.freeze({
   world_draft_notice: "兵役或勞役把名字寫進隊列。",
   world_mass_layoff: "工錢中斷比口號先到。",
   world_devaluation: "鈔票還在，能換的東西少了。",
+  world_ride_wave: "順勢帳週結：行業與標籤踩在行情邊上。",
+  world_shock_scar: "逆風衝擊按週抽成，班表與身體先報銷。",
+  world_shock_brace: "硬扛擋下一截，名單不會因此擦掉你。",
   world_bias_queue: "發放按臉與口音排序。",
   world_border_run: "你走過關卡、水路或封鎖線。",
 

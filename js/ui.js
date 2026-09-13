@@ -483,7 +483,8 @@ function renderEvent(state) {
     h.textContent = /封閉測試/.test(rawTitle)
       ? "人生結算"
       : (rawTitle
-        || (state.ending.kind === "session_close" ? "人生結算" : (state.ending.fatal === false ? "高齡結算" : "死亡證明")));
+        || (state.ending.kind === "legendary_finale" ? "傳奇生涯謝幕"
+          : state.ending.kind === "session_close" ? "人生結算" : (state.ending.fatal === false ? "高齡結算" : "死亡證明")));
     const epitaph = scrubPublicText(String(res.epitaph || state.ending.epitaph || "")
       .replace(/封閉測試[^。]*/g, "")
       .replace(/測試版本[^。]*/g, ""));

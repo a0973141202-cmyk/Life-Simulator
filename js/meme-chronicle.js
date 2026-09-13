@@ -7,6 +7,8 @@ import { scanNarrativeFacts } from "./narrative-facts.js";
 import { scrubPublicText } from "./data/public-text.js";
 
 export const MEME_LEGEND_START_AGE = 24;
+/** Full playthrough length for meme legends only (24 → ~37). */
+export const MEME_PLAY_YEARS = 13;
 
 export function isMemeLegendCharacter(character = null) {
   return MEME_LOCK_PRESET_IDS.includes(character?.specialPresetId);
@@ -14,6 +16,12 @@ export function isMemeLegendCharacter(character = null) {
 
 export function memeLegendStartAgeOf(character = null) {
   return isMemeLegendCharacter(character) ? MEME_LEGEND_START_AGE : null;
+}
+
+/** Soft play-window end age for meme legends (start + 13 years). */
+export function memeLegendPlayAgeMax(character = null) {
+  if (!isMemeLegendCharacter(character)) return null;
+  return MEME_LEGEND_START_AGE + MEME_PLAY_YEARS;
 }
 
 function roll01(rng) {
@@ -140,4 +148,26 @@ export function memePeakJournalLine(character = {}) {
     return "傳奇全盛從二十四歲寫起（一九九九年訪談時代）：下北澤、打工班表與野獸氣息直接上場，幼年卷宗略過。";
   }
   return "傳奇全盛從二十四歲寫起。";
+}
+
+/**
+ * Soft curtain for the ~13-year meme playthrough (non-fatal).
+ * Archival in-world tone; no meta / beta leakage.
+ */
+export function memeLegendaryFinaleCause(character = null, time = null) {
+  const age = Math.max(0, Math.floor(Number(time?.ageYears ?? character?.ageYears) || 0));
+  const end = Number.isFinite(time?.year) ? time.year : null;
+  const yearBit = end != null ? `${end}年、` : "";
+  const name = character?.name || "他";
+  const id = character?.specialPresetId;
+  if (id === "ricardo_milos") {
+    return `${yearBit}${age}歲。紅色頭巾與熱帶節奏在里約寫滿約十三年的全盛頁；迷因舞王這一段檔案到此合上，人未死，舞步卻不再往下兩週記。`;
+  }
+  if (id === "billy_herrington") {
+    return `${yearBit}${age}歲。摔角墊、兄貴氣與哲學視角扛過約十三年的全盛；森之妖精似的身影這一段到此謝幕，人未死，兩週紀事不再往下寫。`;
+  }
+  if (id === "tadokoro_koji") {
+    return `${yearBit}${age}歲。下北澤、夏蜜柑與野獸氣息把約十三年的訪談時代寫滿；惡臭名場面與黑色幽默這一卷到此合檔，人未死，班表卻不再往下排。`;
+  }
+  return `${yearBit}${age}歲。${name}的傳奇全盛約十三年寫滿；這一卷迷因檔案到此謝幕，人未死，兩週紀事不再往下寫。`;
 }

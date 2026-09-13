@@ -11,6 +11,8 @@ import { scrubPublicText } from "./data/public-text.js";
 import { rememberTextSnippet, textOnCooldown } from "./text-history.js";
 import { pickLiveChoiceLane } from "./text-logic-filter.js";
 import { textsTooSimilar } from "./choice-similarity.js";
+import { MATURE_ADULT_MIN } from "./data/age-gate-rules.js";
+import { remapChoiceKindForAge } from "./age-gate.js";
 
 function atom(rng, list, fallback = "") {
   const pool = (list || []).filter(Boolean);
@@ -504,6 +506,12 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `按口袋和帳本，先把${year}年這兩週能付的付掉`;
   }
   if (focus(["kin", "parent"], /^kin_|^parent_/)) {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "help") return `按還能聯繫上的親眷空位，把${city}這兩週人情與雜務結完`;
+      if (dir === "resist") return `不為舊規矩把底牌或名字交出去`;
+      if (dir === "guard") return `先守住自己這戶還能站得住的那一點`;
+      return `看親眷臉色，再決定${city}這兩週能走哪條路`;
+    }
     if (dir === "help") return `按${who}還在或不在的空位，把這一週的事做完`;
     if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
     if (dir === "guard") return `把門栓插上，先保住${who}還認的那張牀`;
@@ -515,6 +523,11 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `把${tagLabel || "出身"}收進回答裏，少說一句多餘的`;
   }
   if (focus(["school"], /^school_/)) {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "resist") return `不按舊學籍或旁人口令把名字交出去`;
+      if (dir === "flee") return `繞開${city}還會拿舊帳卡你的那條路`;
+      return `按${age}歲在${city}的職場與街面規矩把這兩週過完`;
+    }
     if (dir === "resist") return `不按院子裏的人把位子和名字交出去`;
     if (dir === "flee") return `繞開${city}會攔路的那條巷，先回${housing}`;
     return `${age}歲在${city}仍要按點名和院子裏的規矩把這兩週過完`;
@@ -530,6 +543,12 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `按此刻的氣色，這兩週少做一件需要表演正常的事`;
   }
   if (focus(["household"], /^household_/)) {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "guard") return `先守住這一戶還能對外說出口的底線與門面`;
+      if (dir === "resist") return `不按屋裏舊規矩把名字或錢交出去`;
+      if (dir === "help") return `把這一戶還能一起做完的帳與雜務先扛過`;
+      return `按這一戶在${city}的規矩，把${year}年這兩週獨立撐過去`;
+    }
     if (dir === "guard") return `把門栓插上，聽見拍門先裝作沒人`;
     if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
     if (dir === "help") return `按${who}交代的把水打回來、把碗洗乾淨`;
@@ -558,6 +577,14 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `躺著把力氣留給去廁所那一下`;
   }
   if (kind === "family") {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "seek") return `去${city}找這一週還能換成飯錢或人情的路`;
+      if (dir === "guard") return `先守住房租、糧與還能公開說的那一點體面`;
+      if (dir === "resist") return `不按旁人口令把底牌一次交出去`;
+      if (dir === "flee") return `先離開還在綁著你的那戶或那張班表`;
+      if (dir === "help") return `用還撐得住的力氣，幫${who}把眼前能結的帳結完`;
+      return `按成人自立的節奏，把${city}這兩週該扛的先扛過`;
+    }
     if (dir === "seek") return `去找${who}要這兩週還能走的路`;
     if (dir === "guard") return `把門栓插上，聽見拍門先裝作沒人`;
     if (dir === "resist") return `不按屋裏的口令把${kin}交出去`;
@@ -566,6 +593,10 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `把${kin}護住，不讓人先扣走`;
   }
   if (kind === "play") {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "seek") return `去${city}找還能喘一口氣、不耽誤明天上工的空隙`;
+      return `把力氣留給班表與帳本，不拿整段白天去空耗`;
+    }
     if (dir === "seek") return `帶著弟妹在${city}能去的那條巷走一圈`;
     if (dir === "guard") return `聽見口令就把石子收進口袋散開`;
     if (dir === "resist") return `不讓大人把能玩的空隙收去劈柴`;
@@ -625,10 +656,15 @@ export function composeChoiceLine(rng, ctx = {}, kind = "labor", index = 0, extr
     useKind = "family";
     if (dir === "seek" || dir === "flee") dir = "help";
   }
+  useKind = remapChoiceKindForAge(useKind, age);
   const avoid = extra.avoidTexts || [];
   let line = "";
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const tryKind = attempt === 0 ? useKind : (["family", "hunger", "illness", "money", "labor"][attempt % 5]);
+    const adultRetries = ["labor", "hunger", "illness", "money", "labor"];
+    const childRetries = ["family", "hunger", "illness", "money", "labor"];
+    const tryKind = attempt === 0
+      ? useKind
+      : remapChoiceKindForAge((age >= MATURE_ADULT_MIN ? adultRetries : childRetries)[attempt % 5], age);
     const tryDir = attempt === 0 ? dir : (["guard", "seek", "resist", "help", "flee", "endure"][(index + attempt) % 6]);
     const core = assembleChoiceCore(rng, facts, tryKind, tryDir, extra);
     const tail = saltChoiceTail(facts, tryDir, index + attempt * 3, extra);
@@ -803,10 +839,17 @@ export function composeWorldBeat(rng, incident, ctx = {}) {
     .map((thread) => (THREAD_ATOM[thread] || [])[0])
     .filter(Boolean)
     .slice(0, 2);
+  const impact = ctx.industryImpact || incident?.industryImpact;
+  const impactLine = impact?.polarity === "benefit"
+    ? "你的行業或標籤這兩週踩在順風邊上"
+    : impact?.polarity === "harm"
+      ? "逆風先打到班表與口袋，再輪到心情"
+      : "";
   return lockChronicleToClock(joinSentences([
     `${facts.year}年，${facts.place}`,
     incidentKindLine("world", incident?.kind || "scene", facts),
     threads.length ? `能看見的是${threads.join("、")}` : "",
+    impactLine,
   ]), facts);
 }
 

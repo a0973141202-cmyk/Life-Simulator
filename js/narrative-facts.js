@@ -176,7 +176,12 @@ export function scanNarrativeFacts(ctx = {}) {
     season: ctx.environment?.seasonLabel || ctx.season || "",
     stageId: ctx.stage?.id || "",
     gender: character.gender === "female" ? "女" : "男",
-    childWord: character.gender === "female" ? "女孩" : "男孩",
+    childWord: (() => {
+      const age = Number(clock.age);
+      if (Number.isFinite(age) && age >= 20) return character.gender === "female" ? "女子" : "男子";
+      if (Number.isFinite(age) && age >= 13) return character.gender === "female" ? "少女" : "少年";
+      return character.gender === "female" ? "女孩" : "男孩";
+    })(),
     name: character.name || "未名",
     ...hist,
     scanned: true,

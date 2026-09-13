@@ -24,6 +24,14 @@ import { attachUpheaval } from "./upheaval-engine.js";
 import { socialStanding } from "./social-feedback.js";
 import { eventOutline, filterCooledPool } from "./event-memory.js";
 import { eraPlaceAllows } from "./event-engine.js";
+import { ensureCausalState, refreshCausalTagBias } from "./causal-feedback-engine.js";
+import {
+  evaluateIndustryImpact,
+  industryPickWeight,
+  modifyResolutionForIndustry,
+  resolveCareerSector,
+  weeklyIndustryFallout,
+} from "./world-impact-engine.js";
 
 const SEASONAL_ENV_NEEDLES = [
   "extreme_cold",
@@ -125,6 +133,17 @@ export function attachWorldContext(ctx) {
   next.seasonalDisaster = seasonalDisaster;
   next.historyShocks = activeHistoryShocks(next);
   next.historyIds = next.historyShocks.map((row) => row.id);
+  next.careerSector = resolveCareerSector(next);
+  next.occupationId = character.occupationId || null;
+  if (character) {
+    ensureCausalState(character);
+    refreshCausalTagBias(character);
+    character._lastHistoryIds = next.historyIds.slice();
+  }
+  next.causalState = character.causalState || null;
+  next.industryImpact = evaluateIndustryImpact(next, {
+    threads: next.upheaval?.threads || [],
+  });
   return next;
 }
 
@@ -207,6 +226,12 @@ export function worldCrisisChance(ctx) {
   if (era >= 36) p += 0.1;
   const tier = ctx.upheaval?.tier || 0;
   if (tier) p += 0.04 * tier;
+  const impact = ctx.industryImpact;
+  // Slightly raise crisis chance when industry polarity is already scored live.
+  if (impact?.polarity === "harm") p += 0.08;
+  if (impact?.polarity === "benefit") p += 0.06;
+  if ((ctx.causalState?.npcClimate || 0) >= 22) p += 0.04;
+  if ((ctx.upheaval?.tier || 0) >= 1) p += 0.05;
   const cap = tier >= 2 ? 0.52 : 0.42;
   return Math.min(cap, p);
 }
@@ -257,6 +282,7 @@ export function pickWorldEvent(rng, ctx, { lock = null } = {}) {
     if (minority && threads.some((thread) => ["conscription", "flight", "purge"].includes(thread))) weight *= 1.4;
     const band = socialStanding(ctx.ledger || ctx.character?.ledger || {}).band;
     if ((band === "feared" || band === "shunned") && incident.kind === "historical") weight *= 1.12;
+    weight *= industryPickWeight(ctx, incident);
     return weight;
   });
 }
@@ -352,6 +378,11 @@ export function weeklyWorldEventFallout(rng, character, time = {}) {
   const effects = {};
   let consequence = null;
   const ending = null;
+  const industryWeek = weeklyIndustryFallout(rng, character, time);
+  for (const note of industryWeek.notes || []) notes.push(note);
+  for (const [key, value] of Object.entries(industryWeek.effects || {})) {
+    effects[key] = (effects[key] || 0) + value;
+  }
 
   state.pressure = Math.max(0, Math.round(state.pressure * 0.9) - 1);
 
@@ -443,7 +474,11 @@ export function modifyResolutionForWorld(character, option, effects, texts) {
   if (option.worldEvent && (option.dark || option.perpetrator) && next.charm > 0) {
     next.charm = Math.max(0, next.charm - 1);
   }
-  return { effects: next, extraRisk };
+  const industry = modifyResolutionForIndustry(character, option, next, texts);
+  return {
+    effects: industry.effects,
+    extraRisk: extraRisk + (industry.extraRisk || 0),
+  };
 }
 
 export { WORLD_EVENTS, WORLD_TAG_INDEX, WORLD_STANCE_NOTE, WORLD_COST_NOTE };

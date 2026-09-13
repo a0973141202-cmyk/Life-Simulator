@@ -5,7 +5,7 @@
  */
 
 import { childhoodClimate } from "./early-child-filter.js";
-import { EARLY_CHILD_MAX } from "./data/age-gate-rules.js";
+import { EARLY_CHILD_MAX, MATURE_ADULT_MIN, MATURE_BANNED_CHILD_VOICE } from "./data/age-gate-rules.js";
 import {
   CHILD_MATURE_PATTERNS,
   CHILD_TONE_PATTERNS,
@@ -100,6 +100,7 @@ export function scanSemanticMismatches(text, ctx = {}, option = null) {
   if (hits(INCOHERENT_PATTERNS, raw)) hitsFound.push("incoherent");
   if (frame.age <= 12 && hits(CHILD_MATURE_PATTERNS, raw)) hitsFound.push("child_mature");
   if (frame.age <= EARLY_CHILD_MAX && hits(CHILD_TONE_PATTERNS, raw)) hitsFound.push("child_tone");
+  if (frame.age >= MATURE_ADULT_MIN && hits(MATURE_BANNED_CHILD_VOICE, raw)) hitsFound.push("adult_child_voice");
   if ((frame.frail || frame.critical) && hits(VIGOROUS_MOTION_PATTERNS, raw)) hitsFound.push("frail_motion");
   if ((frame.hungry || frame.critical) && hits(EUPHORIC_PATTERNS, raw)) hitsFound.push("euphoria_clash");
   if (frame.hungry && hits(SATED_PATTERNS, raw)) hitsFound.push("sated_clash");
@@ -143,7 +144,7 @@ export function semanticOptionAllowed(option, ctx = {}) {
   const frame = situationFrame(ctx);
   const text = corpusOf(option);
   const mismatches = scanSemanticMismatches(text, ctx, option);
-  const hard = ["incoherent", "child_mature", "frail_motion", "euphoria_clash", "sated_clash"];
+  const hard = ["incoherent", "child_mature", "frail_motion", "euphoria_clash", "sated_clash", "adult_child_voice"];
   if (hard.some((hit) => mismatches.includes(hit))) return false;
   if (isLockedIncident(option)) return true;
   if (mismatches.includes("leisure_in_crisis")) return false;

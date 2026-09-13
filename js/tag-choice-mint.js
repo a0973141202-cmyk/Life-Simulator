@@ -14,6 +14,8 @@ import { tagValence } from "./tag-influence.js";
 import { filterPublicLine } from "./text-logic-filter.js";
 import { publicTagLabel } from "./data/ui-zh.js";
 import { weavePersonaOptions } from "./persona-engine.js";
+import { MATURE_ADULT_MIN } from "./data/age-gate-rules.js";
+import { remapChoiceKindForAge } from "./age-gate.js";
 
 const PREFIX_KIND = Object.freeze({
   trauma: { kind: "family", dirs: ["endure", "flee", "resist"], risk: "high", effects: { sanity: -1, health: -1 } },
@@ -45,7 +47,25 @@ const PREFIX_KIND = Object.freeze({
   lineage: { kind: "family", dirs: ["endure", "withdraw", "resist"], risk: "mid", effects: { charm: -1 } },
   politics: { kind: "family", dirs: ["endure", "resist", "flee"], risk: "high", effects: { mood: -1 } },
   ledger: { kind: "money", dirs: ["guard", "flee", "endure"], risk: "high", effects: { mood: -1 } },
-  persona: { kind: "family", dirs: ["help", "endure", "seek"], risk: "low", effects: { mood: 1, charm: 1 } },
+  persona: { kind: "labor", dirs: ["help", "endure", "seek"], risk: "low", effects: { mood: 1, charm: 1 } },
+});
+
+const ADULT_PREFIX_KIND = Object.freeze({
+  trauma: "labor",
+  household: "labor",
+  kin: "labor",
+  parent: "labor",
+  school: "labor",
+  crime: "labor",
+  ethnicity: "labor",
+  parentTrait: "labor",
+  current: "labor",
+  world: "labor",
+  figure: "labor",
+  social: "labor",
+  lineage: "labor",
+  politics: "labor",
+  persona: "labor",
 });
 
 const DIR_ALIASES = Object.freeze({
@@ -85,11 +105,14 @@ function liveTags(ctx = {}) {
 function scoreTag(tag, ctx) {
   const cat = prefixCategory(tag);
   const valence = tagValence(tag, ctx);
+  const age = Number(ctx.narrativeFacts?.age ?? ctx.ageYears ?? 0);
   let score = 1;
   if (cat === "trauma" || cat === "wealth" || cat === "kin" || cat === "caste") score += 4;
   if (cat === "persona") score += 5;
-  if (cat === "household" || cat === "school" || cat === "mood" || cat === "path") score += 3;
+  if (cat === "household" || cat === "mood" || cat === "path") score += 3;
+  if (cat === "school") score += age >= MATURE_ADULT_MIN ? -8 : 3;
   if (cat === "socio" || cat === "condition" || cat === "adult") score += 2;
+  if (age >= MATURE_ADULT_MIN && (cat === "adult" || cat === "path" || cat === "wealth" || cat === "persona")) score += 3;
   if (valence === "strain") score += 2;
   if (valence === "advantage") score += 1;
   const character = ctx.character || {};
@@ -102,11 +125,16 @@ function laneFromTag(tag, ctx, index) {
   const pack = PREFIX_KIND[cat] || PREFIX_KIND.class;
   const dirs = pack.dirs || ["endure", "seek", "guard"];
   const dir = normalizeDir(dirs[index % dirs.length]);
+  const age = Number(ctx.narrativeFacts?.age ?? ctx.ageYears ?? 0);
   let kind = pack.kind;
+  if (age >= MATURE_ADULT_MIN && ADULT_PREFIX_KIND[cat]) {
+    kind = ADULT_PREFIX_KIND[cat];
+  }
+  kind = remapChoiceKindForAge(kind, age);
   const facts = ctx.narrativeFacts || {};
   if (Number(facts.health ?? 50) <= 28) kind = "illness";
   else if (facts.hungry && (kind === "labor" || kind === "play")) kind = "hunger";
-  else if ((facts.age || 0) < 7 && kind === "labor") kind = "family";
+  else if (age < 7 && kind === "labor") kind = "family";
   return {
     tag,
     category: cat,
@@ -223,7 +251,15 @@ export function mintTagDrivenTriad(rng, ctx = {}) {
       effects: effectsForLane(lane, ctx),
       followUps: [],
       liveFollowUp: composeLiveFollowUp(rng, ctx, { direction: lane.dir, situation: lane.kind }),
-      when: { age: [5, 120], tagsAny: [lane.tag, ...overlap] },
+      when: {
+        age: Number(facts.age || 0) >= MATURE_ADULT_MIN
+          ? [MATURE_ADULT_MIN, 120]
+          : Number(facts.age || 0) >= 13
+            ? [13, 19]
+            : [5, 12],
+        tagsAny: [lane.tag, ...overlap],
+      },
+      lane: Number(facts.age || 0) >= MATURE_ADULT_MIN ? "adult_work" : (lane.kind === "play" ? "play" : "family"),
       tagDriven: true,
       liveTagMint: true,
       zeroHardcodedTemplates: true,
@@ -253,6 +289,14 @@ export function remintLockedTriadText(rng, options = [], ctx = {}) {
   const lanes = collectTagLanes(ctx, 3);
   const used = [];
   return (options || []).slice(0, 3).map((option, index) => {
+    if (option?.liveWorldMint || option?.dynamicWorldMint) {
+      return {
+        ...option,
+        tagDriven: true,
+        liveTagMint: true,
+        zeroHardcodedTemplates: true,
+      };
+    }
     const lane = {
       ...lanes[index],
       dir: normalizeDir(option.direction || option.stance || lanes[index].dir),

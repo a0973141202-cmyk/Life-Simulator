@@ -54,6 +54,11 @@ import {
   weeklyWorldEventFallout,
 } from "./world-event-engine.js";
 import {
+  ensureCausalState,
+  recordCausalEcho,
+  weeklyCausalTick,
+} from "./causal-feedback-engine.js";
+import {
   publicUpheavalView,
   weeklyUpheavalTick,
 } from "./upheaval-engine.js";
@@ -84,6 +89,7 @@ import { scrubPublicText } from "./data/public-text.js";
 import {
   ensureChoiceMemory,
   rememberChosenChoice,
+  resetOptionAgeWeights,
 } from "./choice-pool.js";
 import { ensureConstitution } from "./constitution.js";
 import {
@@ -214,8 +220,12 @@ export class GameEngine {
       completeTurningPoint(this.character, "first_school", { ...time, ageYears: startAge, year: time.year });
       completeTurningPoint(this.character, "exam_fork", { ...time, ageYears: startAge, year: time.year });
       completeTurningPoint(this.character, "society_entry", { ...time, ageYears: startAge, year: time.year });
+      resetOptionAgeWeights(this.character, startAge, getLifeStage(startAge).id);
+      this.character.socialPhase = "adult";
       this._pushJournal("傳奇全盛", [memePeakJournalLine(this.character), ...(entered.notes || [])].filter(Boolean).join(" "), {});
       this._gainTags(entered.applied || ["adult_society_entry"]);
+    } else {
+      resetOptionAgeWeights(this.character, startAge, getLifeStage(startAge).id);
     }
     tickLifeProgress(this.character, {
       ageYears: startAge,
@@ -599,6 +609,10 @@ export class GameEngine {
     const world = option.worldEvent
       ? applyWorldEventChoice(this.character, option, ctx.time, this.rng)
       : { applied: stampWorldTags(this.character, option.addTags || []), notes: [], ending: null };
+    if (option.worldEvent) {
+      const echo = recordCausalEcho(this.character, option, ctx.time);
+      if (echo.notes?.length) world.notes = [...(world.notes || []), ...echo.notes];
+    }
     const figure = option.figureEncounter
       ? applyFigureChoice(this.character, option, ctx.time, this.rng, karma.roll)
       : { applied: stampFigureTags(this.character, option.addTags || []), notes: [], ending: null };
@@ -613,6 +627,10 @@ export class GameEngine {
     attachWorldContext(ctx);
     const upheavalWeek = weeklyUpheavalTick(this.rng, this.character, ctx);
     const historyWeek = weeklyHistoryFallout(this.rng, this.character, ctx.time);
+    const causalWeek = weeklyCausalTick(this.character, ctx.time);
+    if (causalWeek.notes?.length) {
+      worldWeek.notes = [...(worldWeek.notes || []), ...causalWeek.notes];
+    }
     if (schoolWeek.addTags?.length) {
       stampSchoolTags(this.character, schoolWeek.addTags);
       this._gainTags(schoolWeek.addTags);
@@ -992,6 +1010,7 @@ export class GameEngine {
       ensureCasteState(engine.character);
       ensureCareerState(engine.character);
       ensureWorldEventState(engine.character);
+      ensureCausalState(engine.character);
       ensureHistoryState(engine.character);
       ensureLifeProgress(engine.character);
       seedTagLifecycle(engine.character, engine.turnCount || 0);
@@ -1160,6 +1179,9 @@ export class GameEngine {
   }
 
   _endPlayWindow() {
+    if (isMemeLegendCharacter(this.character)) {
+      return this._endLegendaryFinale();
+    }
     if (isTemporaryPlayCap(this.character)) {
       return this._endSessionClose();
     }
@@ -1265,6 +1287,14 @@ export class GameEngine {
 
   _endSessionClose() {
     return this._stampResolution("session_close", {
+      fatal: false,
+      reason: "",
+      detail: "",
+    });
+  }
+
+  _endLegendaryFinale() {
+    return this._stampResolution("legendary_finale", {
       fatal: false,
       reason: "",
       detail: "",

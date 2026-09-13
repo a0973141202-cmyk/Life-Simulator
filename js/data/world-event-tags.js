@@ -212,6 +212,30 @@ export const WORLD_TAG_DATABASE = Object.freeze([
     strainIn: ["official", "family", "health"],
     reason: "你走過關卡、水路或封鎖線。行李與口音都會被檢查。",
   },
+  {
+    id: "world_ride_wave",
+    label: "順勢搭車",
+    hooks: ["trade", "labor", "survival"],
+    advantageIn: ["trade", "survival"],
+    strainIn: ["health", "wealth"],
+    reason: "宏觀動盪裡你踩過順風的行業或標籤。賺的是行情，帳仍按週結。",
+  },
+  {
+    id: "world_shock_scar",
+    label: "衝擊疤",
+    hooks: ["scarcity", "labor", "survival"],
+    advantageIn: ["survival"],
+    strainIn: ["wealth", "health", "social"],
+    reason: "逆風行業或缺防護標籤讓宏觀衝擊先寫進你的班表與身體。",
+  },
+  {
+    id: "world_shock_brace",
+    label: "硬扛備援",
+    hooks: ["labor", "survival", "wait"],
+    advantageIn: ["survival", "labor"],
+    strainIn: ["mood"],
+    reason: "吃苦或防護標籤擋下一截，沒把你從時代名單上擦掉。",
+  },
 ]);
 
 export const WORLD_TAG_INDEX = Object.freeze(

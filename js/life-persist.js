@@ -1,10 +1,13 @@
 /**
  * Browser localStorage autosave. One living file, one key.
  * The slot is overwritten after every fortnight; it is cleared only
- * when a finished life is allowed to be replaced.
+ * when a finished life is allowed to be replaced, or when the client
+ * build / save schema is incompatible with a stale cache.
  */
 export const SAVE_KEY = "century_life_save";
-export const SAVE_VERSION = 1;
+/** Bumped when option/age-gate schema makes old living saves unsafe to resume. */
+export const SAVE_VERSION = 2;
+export const CLIENT_BUILD_KEY = "century_client_build";
 export const HALL_KEY = "century_hall_of_fame";
 export const HALL_VERSION = 1;
 const HALL_CAP = 48;
@@ -19,6 +22,55 @@ function storage() {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Resolve cache-bust / reset hints from the page URL.
+ * `?v=age-gate-fix-5` stamps the client build; `?reset=1` forces wipe.
+ */
+export function clientBootHints(search = "") {
+  const raw = String(search || (typeof location !== "undefined" ? location.search : "") || "");
+  const params = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+  const build = String(params.get("v") || params.get("build") || "").trim();
+  const reset = ["1", "true", "yes"].includes(String(params.get("reset") || params.get("clearSave") || "").toLowerCase());
+  return { build, reset };
+}
+
+/**
+ * Drop living saves that belong to an older client build or save schema.
+ * Returns why a wipe happened (or null if the slot was kept).
+ */
+export function purgeStaleClientState(hints = null) {
+  const store = storage();
+  if (!store) return { wiped: false, reason: "no_storage" };
+  const boot = hints || clientBootHints();
+  let reason = null;
+  if (boot.reset) reason = "url_reset";
+  const previousBuild = store.getItem(CLIENT_BUILD_KEY) || "";
+  if (!reason && boot.build && previousBuild && previousBuild !== boot.build) {
+    reason = "client_build_changed";
+  }
+  const raw = store.getItem(SAVE_KEY);
+  if (!reason && raw) {
+    try {
+      const data = JSON.parse(raw);
+      if (data?.version != null && Number(data.version) !== SAVE_VERSION) {
+        reason = "save_version_mismatch";
+      }
+    } catch {
+      reason = "save_corrupt";
+    }
+  }
+  if (boot.build) {
+    try {
+      store.setItem(CLIENT_BUILD_KEY, boot.build);
+    } catch {
+      /* ignore quota */
+    }
+  }
+  if (!reason) return { wiped: false, reason: null, build: boot.build || previousBuild || null };
+  clearLifeSave();
+  return { wiped: true, reason, build: boot.build || previousBuild || null };
 }
 
 export function snapshotEngine(engine) {
@@ -52,8 +104,13 @@ export function readLifeSave() {
   try {
     const data = JSON.parse(raw);
     if (!data?.character || !data?.clock) return null;
+    if (data.version != null && Number(data.version) !== SAVE_VERSION) {
+      clearLifeSave();
+      return null;
+    }
     return data;
   } catch {
+    clearLifeSave();
     return null;
   }
 }
