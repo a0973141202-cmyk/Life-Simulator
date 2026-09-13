@@ -30,6 +30,7 @@ import {
   rollSpecialPreset,
   stampSpecialOpening,
 } from "./data/special-presets.js";
+import { stampMemeDossier } from "./meme-dossier.js";
 import {
   FORBIDDEN_SETTLEMENT_IDS,
   SETTLEMENTS,
@@ -936,6 +937,7 @@ export class GenesisEngine {
     if (specialRoll.hit) {
       stampSpecialOpening(character, specialRoll.preset);
       ensurePermanentMemeTags(character);
+      stampMemeDossier(character, specialRoll.preset.id);
     }
     return character;
   }

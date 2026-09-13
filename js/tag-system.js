@@ -25,6 +25,8 @@ export class TagStore {
       const existing = this.index.get(record.id);
       if (record.permanent) existing.permanent = true;
       if (record.permanent) existing.temporary = false;
+      if (record.goldCore) existing.goldCore = true;
+      if (record.label && record.permanent) existing.label = record.label;
       return false;
     }
     this.records.push(record);
@@ -218,6 +220,14 @@ export function ensurePermanentMemeTags(character) {
       record.permanent = true;
       dirty = true;
     }
+    if (def.goldCore && !record.goldCore) {
+      record.goldCore = true;
+      dirty = true;
+    }
+    if (def.label && record.label !== def.label) {
+      record.label = def.label;
+      dirty = true;
+    }
     if (record.temporary) {
       record.temporary = false;
       dirty = true;
@@ -243,7 +253,24 @@ export function ensurePermanentMemeTags(character) {
     for (const id of ids) character.tagLifecycle.idle[id] = 0;
   }
   character.tagRecords = character.tagStore.toJSON();
+  // Scrub retired meme-persona tags that are no longer in the gold-core lock table.
+  const lockSet = new Set(ids);
+  const retired = (character.tagRecords || []).filter((row) => (
+    String(row.id || "").startsWith("persona_")
+    && row.source === "special_preset"
+    && !lockSet.has(row.id)
+  ));
+  for (const row of retired) {
+    // Force-remove even if somehow still marked permanent from an older build.
+    const rec = character.tagStore.get(row.id);
+    if (rec) {
+      rec.permanent = false;
+      character.tagStore.remove(row.id);
+    }
+  }
+  character.tagRecords = character.tagStore.toJSON();
   character.tags = uniqueTags(character.tagRecords.flatMap((item) => [item.id, item.label]));
+  character.goldCoreTagIds = ids.slice();
   return { restored, locked: ids };
 }
 

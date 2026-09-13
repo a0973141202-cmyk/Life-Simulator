@@ -147,26 +147,17 @@ function tagBeat(ctx = {}, options = []) {
     return `舊傷口一碰就痛，${city}這兩週仍要按傷勢能做的事排活`;
   }
   if (tags.some((tag) => tag.startsWith("persona_"))) {
-    if (tags.includes("persona_banana_legend") || tags.includes("persona_meme_dancer") || tags.includes("persona_brazil_passion")) {
-      return `${city}這兩週仍有巴西的熱與自由的節奏，傳奇舞步不退`;
+    if (tags.includes("persona_banana_legend") || tags.includes("persona_meme_dancer") || tags.includes("persona_brazil_samba") || tags.includes("persona_invincible_smile")) {
+      return `${city}這兩週仍有巴西森巴與無敵笑容，傳奇舞步不退`;
     }
-    if (tags.includes("persona_muscle_hunk") || tags.includes("persona_wrestler")) {
-      return `${city}這兩週仍是體育館燈與街頭熱血，勞動與危機先交給身子扛`;
+    if (tags.includes("persona_aniki_wrestle") || tags.includes("persona_biochem") || tags.includes("persona_forest_fairy")) {
+      return `${city}這兩週仍是體育館燈與森之妖精的夜色，勞動與危機先交給身子扛`;
     }
-    if (tags.includes("persona_aniki")) {
-      return `兄貴這兩週先伸手：同伴低谷時他不肯先鬆開`;
+    if (tags.includes("persona_loyal_bond") || tags.includes("persona_deep_philosophy")) {
+      return `重情重義這兩週先伸手：同伴低谷時他不肯先鬆開`;
     }
-    if (tags.includes("persona_cheerful") || tags.includes("persona_born_leader")) {
-      return `樂觀與領袖氣還在，時代壓來也比旁人少先扣神智`;
-    }
-    if (tags.includes("persona_beast_senpai") || tags.includes("persona_stench") || tags.includes("persona_shimokita_legend") || tags.includes("persona_beast_instinct")) {
-      return `下北澤這兩週仍是窄巷與汽笛，野獸先輩的味與危機一起來`;
-    }
-    if (tags.includes("persona_athlete") || tags.includes("persona_high_pressure")) {
-      return `身子還撐得住，時代與階級的壓卻從精神帳上先扣`;
-    }
-    if (tags.includes("persona_abyss_magnet")) {
-      return `巷口奇人怪事仍容易被吸進他的路，命運交錯難測`;
+    if (tags.includes("persona_beast_senpai") || tags.includes("persona_stench_foul") || tags.includes("persona_shimokita_labor") || tags.includes("persona_114514") || tags.includes("persona_natsumikan") || tags.includes("persona_onmad_classic")) {
+      return `下北澤這兩週仍是打工班表與夏蜜柑的酸，野獸先輩的味與危機一起來`;
     }
     if (tags.includes("persona_high_roller") || tags.includes("persona_quit_ahead")) {
       return `${city}這兩週帳本與賭注並排，該搏的搏，該收的收`;

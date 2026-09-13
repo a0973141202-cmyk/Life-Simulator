@@ -59,7 +59,9 @@ export const MORTALITY_TAG_WEIGHTS = Object.freeze([
   { tags: ["world_extractive_child", "world_child_labor_street"], accident: 0.1, disease: 0.06, hunger: 0.05 },
   { tags: ["figure_hunted", "figure_butterfly"], violence: 0.28, accident: 0.12 },
   { tags: ["figure_failed_hand"], violence: 0.18, accident: 0.08 },
-  { tags: ["persona_muscle_hunk", "persona_wrestler"], accident: -0.2, violence: -0.14, disease: -0.1, environment: -0.08 },
+  { tags: ["persona_aniki_wrestle", "persona_biochem"], accident: -0.2, violence: -0.14, disease: -0.1, environment: -0.08 },
+  { tags: ["persona_shimokita_labor", "persona_beast_senpai"], accident: -0.08, violence: -0.06, disease: 0.04 },
+  { tags: ["persona_banana_legend", "persona_brazil_samba"], disease: -0.06, environment: -0.05 },
 ]);
 
 /** Matching environment/disease only. Never applied to violence. */

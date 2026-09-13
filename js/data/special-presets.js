@@ -77,14 +77,14 @@ export const ZHANG_PERSONA_TAGS = Object.freeze([
   Object.freeze({ id: "persona_quit_ahead", label: "見好就收", category: "persona", source: "special_preset" }),
 ]);
 
+/** Golden-core permanent tags — never fade, never scrub. */
 export const TADOKORO_PERSONA_TAGS = Object.freeze([
-  Object.freeze({ id: "persona_shimokita_legend", label: "下北澤傳奇", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_beast_instinct", label: "野獸直覺", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_beast_senpai", label: "野獸先輩", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_stench", label: "惡臭", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_athlete", label: "體育生", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_high_pressure", label: "高壓生存", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_abyss_magnet", label: "深淵磁場", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_114514", label: "114514", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_beast_senpai", label: "野獸先輩", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_shimokita_labor", label: "下北澤打工", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_natsumikan", label: "夏蜜柑", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_stench_foul", label: "惡臭難聞", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_onmad_classic", label: "定番音MAD", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
 ]);
 
 export const HUANG_PINJUN_PRESET = Object.freeze({
@@ -121,7 +121,7 @@ export const ZHANG_JUNBIN_PRESET = Object.freeze({
   }),
 });
 
-/** Exact 1/114514. */
+/** Exact 1/114514. Peak era: classic interview / Heisei late — spawn 1999 at age 24. */
 export const TADOKORO_KOJI_PRESET = Object.freeze({
   id: "tadokoro_koji",
   oddsDenominator: 114514,
@@ -129,26 +129,31 @@ export const TADOKORO_KOJI_PRESET = Object.freeze({
   gender: "male",
   settlementId: "shimokitazawa",
   familyClass: "worker",
+  /** Calendar year of the legendary interview-era entry (age 24). */
+  peakEraYear: 1999,
+  birthYear: 1975,
+  birthDate: "1975-06-09",
   themeClass: "preset-shimokita",
   statsBoost: Object.freeze({ health: 12, sanity: -6 }),
   tags: TADOKORO_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把田所浩二寫在東京下北澤。窄巷、鐵道路基與夜班燈比官署更早認得他。二十四歲上場時，夏蜜柑的酸氣與野獸般的氣息已經寫進走路的方式。",
-    awakening: "傳奇全盛略過幼年卷宗。打工班表、惡臭名場面與那串說不清的數字並排：危機來得極端，活路也來得荒謬。",
-    weekLead: "下北澤這兩週仍是窄巷、汽笛與深夜的笑聲。田所浩二按野獸先輩那一套走路：該扛就扛，該笑就笑，該絕處逢生就絕不先低頭。",
-    outline: "shimokitazawa|tadokoro_koji|beast",
+    birth: "戶籍把田所浩二寫在東京下北澤。窄巷、鐵道路基與夜班燈比官署更早認得他。一九七五年落地，二四年後——一九九九年——夏蜜柑的酸氣與野獸般的氣息已經寫進走路的方式。",
+    awakening: "傳奇全盛略過幼年卷宗，直接落在一九九九年前後。打工班表、惡臭名場面與那串說不清的數字並排：危機來得極端，活路也來得荒謬。",
+    weekLead: "一九九九年的下北澤這兩週仍是窄巷、汽笛與深夜的笑聲。田所浩二按野獸先輩那一套走路：該扛就扛，該笑就笑，該絕處逢生就絕不先低頭。",
+    outline: "shimokitazawa|tadokoro_koji|beast|1999",
   }),
 });
 
+/** Golden-core permanent tags — never fade, never scrub. */
 export const BILLY_PERSONA_TAGS = Object.freeze([
-  Object.freeze({ id: "persona_muscle_hunk", label: "肌肉猛男", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_wrestler", label: "摔角手", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_aniki", label: "兄貴精神", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_cheerful", label: "樂觀開朗", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_born_leader", label: "天生領袖", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_aniki_wrestle", label: "兄貴摔角", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_deep_philosophy", label: "深邃哲學", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_forest_fairy", label: "森之妖精", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_loyal_bond", label: "重情重義", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_biochem", label: "Biochem", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
 ]);
 
-/** William Glen Harold "Billy" Herrington — exact 1/10000. */
+/** William Glen Harold "Billy" Herrington — exact 1/10000. Historical birth 1969-07-14 → age 24 in 1993 peak. */
 export const BILLY_HERRINGTON_PRESET = Object.freeze({
   id: "billy_herrington",
   oddsDenominator: 10000,
@@ -157,27 +162,30 @@ export const BILLY_HERRINGTON_PRESET = Object.freeze({
   gender: "male",
   settlementId: "newyork",
   familyClass: "worker",
+  peakEraYear: 1993,
   birthYear: 1969,
   birthDate: "1969-07-14",
   themeClass: "preset-aniki-archive",
   statsBoost: Object.freeze({ health: 16, sanity: 4 }),
   tags: BILLY_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把比利·海靈頓寫在紐約。移民碼頭、體育館更衣室與摔角墊比摩天樓更早把他圍住。二十四歲上場時，William Glen Harold 這個長名在街上早已縮成 Billy。",
-    awakening: "傳奇全盛略過幼年卷宗。筋肉、兄貴精神與哲學視角並排：溫柔重情，困境來了也先以摔角手的大度站穩。",
-    weekLead: "紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。比利·海靈頓按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
-    outline: "newyork|billy_herrington|aniki",
+    birth: "戶籍把比利·海靈頓寫在紐約。移民碼頭、體育館更衣室與摔角墊比摩天樓更早把他圍住。一九六九年七月十四日落地，一九九三年滿二十四歲時，William Glen Harold 這個長名在街上早已縮成 Billy。",
+    awakening: "傳奇全盛略過幼年卷宗，落在九〇年代初摔角與影視的黃金窗口。兄貴摔角、深邃哲學與森之妖精並排：溫柔重情，困境來了也先以摔角手的大度站穩。",
+    weekLead: "一九九三年的紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。比利·海靈頓按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
+    outline: "newyork|billy_herrington|aniki|1993",
   }),
 });
 
+/** Golden-core permanent tags — never fade, never scrub. */
 export const RICARDO_PERSONA_TAGS = Object.freeze([
-  Object.freeze({ id: "persona_banana_legend", label: "香蕉傳奇", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_absolute_freedom", label: "絕對自由", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_meme_dancer", label: "迷因舞王", category: "persona", source: "special_preset", permanent: true }),
-  Object.freeze({ id: "persona_brazil_passion", label: "巴西熱情", category: "persona", source: "special_preset", permanent: true }),
+  Object.freeze({ id: "persona_banana_legend", label: "香蕉傳奇", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_absolute_freedom", label: "絕對自由", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_meme_dancer", label: "迷因舞王", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_brazil_samba", label: "巴西森巴", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
+  Object.freeze({ id: "persona_invincible_smile", label: "無敵笑容", category: "persona", source: "special_preset", permanent: true, goldCore: true }),
 ]);
 
-/** Ricardo Milos — Rio de Janeiro, exact 1/10000. */
+/** Ricardo Milos — Rio de Janeiro, exact 1/10000. Digital banana-era peak ~2011 at age 24. */
 export const RICARDO_MILOS_PRESET = Object.freeze({
   id: "ricardo_milos",
   oddsDenominator: 10000,
@@ -186,13 +194,16 @@ export const RICARDO_MILOS_PRESET = Object.freeze({
   gender: "male",
   settlementId: "rio",
   familyClass: "worker",
+  peakEraYear: 2011,
+  birthYear: 1987,
+  birthDate: "1987-03-21",
   themeClass: "preset-rio-banana",
   tags: RICARDO_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱帶陽光與港口節奏比官署更早把他叫醒。二十四歲上場時，紅色頭巾與香蕉傳奇已經寫進步伐。",
-    awakening: "傳奇全盛略過幼年卷宗。絕對自由、迷因舞步與巴西熱情並排：危機來了也能華麗轉身，樂天不散。",
-    weekLead: "里約這兩週仍是山海風與街頭節奏。里卡多·米洛斯按傳奇那一套走路：該舞就舞，該自由就自由。",
-    outline: "rio|ricardo_milos|banana",
+    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱帶陽光與港口節奏比官署更早把他叫醒。一九八七年落地，二〇一一年滿二十四歲時，紅色頭巾與香蕉傳奇已經寫進步伐。",
+    awakening: "傳奇全盛略過幼年卷宗，落在數位檔案庫把里約節奏複製到全球的那幾年。絕對自由、迷因舞步與巴西森巴並排：危機來了也能華麗轉身，樂天不散。",
+    weekLead: "二〇一一年的里約這兩週仍是山海風與街頭節奏。里卡多·米洛斯按傳奇那一套走路：該舞就舞，該自由就自由。",
+    outline: "rio|ricardo_milos|banana|2011",
   }),
 });
 
@@ -360,6 +371,8 @@ export function stampSpecialOpening(character, preset) {
   if (MEME_LOCK_PRESET_IDS.includes(preset.id)) {
     character.memeTagLock = true;
     character.permanentTagIds = memeLockTagIdsFor(preset.id);
+    character.goldCoreTagIds = memeLockTagIdsFor(preset.id);
+    if (preset.peakEraYear != null) character.peakEraYear = preset.peakEraYear;
   }
   return character;
 }

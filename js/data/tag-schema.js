@@ -101,6 +101,7 @@ export function makeTagRecord(partial) {
     hidden: Boolean(partial.hidden),
     temporary: Boolean(partial.temporary),
     permanent: Boolean(partial.permanent),
+    goldCore: Boolean(partial.goldCore),
     valence: partial.valence || "contextual",
     advantageIn: partial.advantageIn ? partial.advantageIn.slice() : [],
     strainIn: partial.strainIn ? partial.strainIn.slice() : [],

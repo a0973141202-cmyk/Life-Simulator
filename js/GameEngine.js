@@ -110,10 +110,12 @@ import {
 import {
   applyAnikiUpliftChoice,
   applyAthleteHighPressureTick,
+  applyBillyRomanceCrisis,
   applyBrotherhoodStandChoice,
   applyLeaderOptimismShield,
   applyLeaderRallyChoice,
   applyQuitAheadStopLoss,
+  applyRicardoBlissTick,
   enhanceWealthStakeForPersona,
   personaCrisisResistBonus,
   resolveAbyssMagnetism,
@@ -121,6 +123,7 @@ import {
   resolvePersonaPaybacks,
   rollPersonaCrisisSwing,
 } from "./persona-engine.js";
+import { stampMemeDossier } from "./meme-dossier.js";
 import {
   applyChoiceKinEffects,
   applyKinCrisisChoice,
@@ -180,6 +183,7 @@ export class GameEngine {
     this.rng = createRng(this.seed, overrides.rngState);
     this.genesis = new GenesisEngine({ rng: this.rng, seed: this.seed });
     this.character = this.genesis.generateRandomCharacter(overrides);
+    stampMemeDossier(this.character);
     const startAge = memeLegendStartAgeOf(this.character) ?? PLAY_AGE_MIN;
     this.clock = createClockAtAge(this.character.birthDate, startAge);
     this.journal = [];
@@ -710,6 +714,15 @@ export class GameEngine {
       appliedBundle.applied.sanity = (appliedBundle.applied.sanity || 0) - athleteDrain.drain;
       appliedBundle.applied.health = (appliedBundle.applied.health || 0) + 1;
     }
+    const billyRomance = applyBillyRomanceCrisis(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+      pressure: karma.pressure,
+    });
+    const ricardoBliss = applyRicardoBlissTick(this.character, this.rng, {
+      ...ctx,
+      turnCount: this.turnCount,
+    });
     const sanityWeekRaw = weeklySanityCrisis(this.character, {
       ...ctx,
       eraCrisis: eraNow,
@@ -766,6 +779,10 @@ export class GameEngine {
       ...(upheavalWeek.notes || []),
       ...(figure.notes || []),
       ...(historyWeek.notes || []),
+      crisisSwing.note,
+      athleteDrain.note,
+      billyRomance.note,
+      ricardoBliss.note,
     ].filter(Boolean);
 
     const beforeTime = snapshotTime(this.clock, this.character);
@@ -901,7 +918,7 @@ export class GameEngine {
     this.clock = advanceClock(this.clock, this.character);
     const ageNow = getAgeParts(this.clock, this.character);
 
-    if (shouldClosePlayWindow(ageNow.ageYears)) {
+    if (shouldClosePlayWindow(ageNow.ageYears, this.character)) {
       return this._endPlayWindow();
     }
 
@@ -979,6 +996,7 @@ export class GameEngine {
       ensureLifeProgress(engine.character);
       seedTagLifecycle(engine.character, engine.turnCount || 0);
       ensurePermanentMemeTags(engine.character);
+      stampMemeDossier(engine.character);
       ensureTextHistory(engine.character);
       ensureExclusionBuffer(engine.character);
       ensureEventMemory(engine.character);
@@ -1142,7 +1160,7 @@ export class GameEngine {
   }
 
   _endPlayWindow() {
-    if (isTemporaryPlayCap()) {
+    if (isTemporaryPlayCap(this.character)) {
       return this._endSessionClose();
     }
     return this._endLongevity();
@@ -1162,8 +1180,8 @@ export class GameEngine {
       era,
       upheaval: this.character.upheavalState,
       eraCrisis: this._eraCrisis(),
-      playAgeCap: effectivePlayAgeMax(),
-      temporaryCap: isTemporaryPlayCap(),
+      playAgeCap: effectivePlayAgeMax(this.character),
+      temporaryCap: isTemporaryPlayCap(this.character),
     });
     const deathCtx = { ...this._context(), year: time.year, ageYears: time.ageYears };
     resolution.epitaph = gateDeathCopy(this.rng, resolution.epitaph, deathCtx);

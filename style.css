@@ -1526,3 +1526,172 @@ body.preset-aniki-archive {
   letter-spacing: 0.18em;
   color: var(--stamp);
 }
+
+/* —— Ricardo Milos: tropical banana / samba confidential archive —— */
+#app.preset-rio-banana,
+body.preset-rio-banana {
+  --paper: #e8d28a;
+  --paper-deep: #c07820;
+  --ink: #1a1008;
+  --rule: #3a2208;
+  --stamp: #c82818;
+  --desk: #120c04;
+  --folder: #8a5a18;
+  --fade: #5a3a14;
+}
+
+#app.preset-rio-banana {
+  border: 3px solid #4a2808;
+  box-shadow:
+    0 0 0 2px #1a1004,
+    0 0 0 5px rgba(240, 160, 20, 0.42),
+    0 0 32px rgba(40, 180, 120, 0.18),
+    0 22px 48px rgba(0, 0, 0, 0.7);
+  background-image:
+    repeating-linear-gradient(120deg, transparent, transparent 14px, rgba(255, 200, 40, 0.07) 15px),
+    linear-gradient(185deg, rgba(255, 140, 20, 0.2), transparent 34%),
+    radial-gradient(ellipse at 12% 0%, rgba(40, 200, 140, 0.2), transparent 44%),
+    radial-gradient(ellipse at 90% 100%, rgba(220, 40, 40, 0.14), transparent 42%);
+}
+
+#app.preset-rio-banana .masthead {
+  border-bottom: 5px solid var(--rule);
+  background:
+    linear-gradient(90deg, rgba(255, 160, 20, 0.16), transparent 42%, rgba(30, 180, 120, 0.12)),
+    linear-gradient(180deg, rgba(60, 24, 8, 0.16), transparent 74%);
+}
+
+#app.preset-rio-banana .masthead-kicker {
+  color: var(--stamp);
+  letter-spacing: 0.34em;
+}
+
+#app.preset-rio-banana .masthead-title {
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 14px rgba(255, 200, 40, 0.28), 1px 1px 0 rgba(255, 240, 180, 0.2);
+}
+
+#app.preset-rio-banana .ornament {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-width: 3px;
+  opacity: 0.72;
+  color: #c84810;
+  box-shadow: 0 0 12px rgba(40, 200, 120, 0.28);
+}
+
+#app.preset-rio-banana .event-history {
+  border-color: rgba(180, 80, 10, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 210, 60, 0.22),
+    inset 0 14px 28px rgba(80, 30, 0, 0.1);
+  background: rgba(255, 240, 160, 0.18);
+}
+
+#app.preset-rio-banana .choice,
+#app.preset-rio-banana .choice-btn {
+  background: linear-gradient(180deg, #ffe08a 0%, #e09028 100%);
+  border-color: #4a2808;
+  box-shadow: 3px 3px 0 #2a1604, 0 0 12px rgba(40, 180, 100, 0.18);
+}
+
+#app.preset-ricardo-milos .clip-lead h3::after {
+  content: " · 香蕉卷宗";
+  font-size: 0.72em;
+  letter-spacing: 0.18em;
+  color: var(--stamp);
+}
+
+/* —— Golden-core persona chips + meme dossier overlays —— */
+.tags-plate.is-meme-gold {
+  border: 2px solid rgba(160, 20, 30, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 80, 0.35), 0 0 18px rgba(180, 40, 20, 0.18);
+  background: linear-gradient(180deg, rgba(255, 230, 140, 0.22), rgba(40, 12, 12, 0.08));
+}
+
+.tags-plate.is-meme-gold .plate-title {
+  color: var(--stamp);
+  letter-spacing: 0.22em;
+}
+
+.tag.tag-gold-core,
+.tag[data-permanent="1"] {
+  border: 2px solid #8a1414;
+  background: linear-gradient(180deg, #ffe9a0 0%, #d4a040 55%, #a04818 100%);
+  color: #140808;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: 2px 2px 0 #2a0808, 0 0 10px rgba(255, 180, 40, 0.35);
+  text-shadow: 0 1px 0 rgba(255, 250, 220, 0.45);
+}
+
+.crisis-alert.is-meme-dossier {
+  border-width: 3px;
+  border-style: double;
+  min-height: 7.2rem;
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      transparent,
+      transparent 8px,
+      rgba(160, 20, 30, 0.06) 9px
+    ),
+    linear-gradient(180deg, rgba(255, 240, 180, 0.35), rgba(60, 10, 16, 0.12));
+  box-shadow: 0 0 0 2px rgba(20, 8, 8, 0.55), 0 0 22px rgba(200, 40, 40, 0.22);
+}
+
+.crisis-alert.is-meme-dossier .crisis-stamp {
+  transform: rotate(-6deg);
+  border-width: 3px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+  background: rgba(255, 245, 200, 0.55);
+}
+
+.crisis-alert[data-level="meme-joy"] {
+  border-color: #c84810;
+  box-shadow: 0 0 0 2px #1a1004, 0 0 24px rgba(255, 160, 20, 0.35);
+}
+
+.crisis-alert[data-level="meme-philosophy"] {
+  border-color: #a01818;
+  box-shadow: 0 0 0 2px #160808, 0 0 24px rgba(180, 40, 20, 0.35);
+}
+
+.crisis-alert[data-level="meme-stench"] {
+  border-color: #6a1830;
+  box-shadow: 0 0 0 2px #0c0a0e, 0 0 24px rgba(30, 160, 170, 0.28), 0 0 18px rgba(160, 30, 50, 0.25);
+}
+
+.figure-log.is-meme-archive {
+  border: 2px solid rgba(120, 20, 30, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 100, 0.28);
+  background: linear-gradient(185deg, rgba(255, 235, 170, 0.18), rgba(20, 8, 12, 0.06));
+}
+
+.figure-log.is-meme-archive .plate-title {
+  color: var(--stamp);
+  letter-spacing: 0.18em;
+}
+
+.figure-log-list .is-meme-contact {
+  border-left: 4px solid var(--stamp);
+  padding-left: 0.55rem;
+  background: rgba(255, 245, 200, 0.22);
+}
+
+.figure-log-list .is-meme-contact .who {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.figure-log-list .is-meme-contact .rel {
+  color: var(--stamp);
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+}
+

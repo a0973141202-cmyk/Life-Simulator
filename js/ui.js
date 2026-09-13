@@ -17,8 +17,11 @@ import { readHallOfFame } from "./life-persist.js";
 import { composeMementoCard } from "./memento.js";
 import { inspectPublicLine } from "./text-monitor.js";
 import { sanitizeChronicleText, splitChronicleUnits } from "./chronicle-sanitize.js";
+import { memeDossierWarningOf, memeFigureContactLogOf } from "./meme-dossier.js";
+import { MEME_LOCK_PRESET_IDS } from "./data/special-presets.js";
 
 const TAG_PRIORITY = new Set([
+  "persona",
   "trauma", "school", "caste", "adult", "world", "figure",
   "mood", "socio", "path", "crime", "politics", "acquired", "household", "ledger", "social", "wealth", "kin",
   "ethnicity", "trait", "class", "climate", "region", "parent", "condition", "misc",
@@ -110,22 +113,35 @@ function figureName(id) {
 function visibleTags(state) {
   const records = state.character?.tagRecords || [];
   const visible = new Set(state.character?.visibleTags || []);
+  const permanentIds = new Set(state.character?.permanentTagIds || []);
   const picked = [];
   const seen = new Set();
-  for (const record of records) {
-    if (record.hidden) continue;
-    if (visible.size && !visible.has(record.id)) continue;
-    if (!TAG_PRIORITY.has(record.category)) continue;
-    if (String(record.id || "").startsWith("current_")) continue;
-    if (/^date_\d/.test(record.id || "")) continue;
+  const pushRecord = (record) => {
+    if (record.hidden) return;
+    if (visible.size && !visible.has(record.id) && !record.permanent && !record.goldCore) return;
+    if (!TAG_PRIORITY.has(record.category) && !record.permanent && !record.goldCore) return;
+    if (String(record.id || "").startsWith("current_")) return;
+    if (/^date_\d/.test(record.id || "")) return;
     const label = publicTagLabel(record);
-    if (!label || isDebugCode(label) || isDossierLeakSentence(label)) continue;
-    if (seen.has(label)) continue;
+    const gold = Boolean(record.goldCore || record.permanent || permanentIds.has(record.id));
+    if (!label) return;
+    if (!gold && (isDebugCode(label) || isDossierLeakSentence(label))) return;
+    if (seen.has(label)) return;
     seen.add(label);
-    picked.push({ ...record, label });
+    picked.push({ ...record, label, goldCore: gold });
+  };
+  // Golden persona cores first — fixed, high-contrast chips.
+  for (const record of records) {
+    if (record.category === "persona" || record.goldCore || permanentIds.has(record.id)) {
+      pushRecord(record);
+    }
+  }
+  for (const record of records) {
+    if (record.category === "persona" || record.goldCore || permanentIds.has(record.id)) continue;
+    pushRecord(record);
     if (picked.length >= 28) break;
   }
-  return picked;
+  return picked.slice(0, 28);
 }
 
 function renderTags(state) {
@@ -134,6 +150,17 @@ function renderTags(state) {
   bindTagTooltips();
   root.replaceChildren();
   const tags = visibleTags(state);
+  const plate = root.closest(".tags-plate");
+  const meme = MEME_LOCK_PRESET_IDS.includes(state.character?.specialPresetId);
+  if (plate) {
+    plate.classList.toggle("is-meme-gold", meme);
+    const note = plate.querySelector(".plate-note");
+    if (note && meme) {
+      note.textContent = "黃金核心標籤：永久鎖定，不可拔除、覆蓋或清洗。";
+    } else if (note && !meme) {
+      note.textContent = "創傷、出路、時代與人物接觸裡，街坊能叫得出來的記號。";
+    }
+  }
   if (!tags.length) {
     const empty = document.createElement("p");
     empty.className = "tags-empty";
@@ -143,8 +170,9 @@ function renderTags(state) {
   }
   for (const record of tags) {
     const chip = document.createElement("span");
-    chip.className = "tag";
+    chip.className = record.goldCore ? "tag tag-gold-core" : "tag";
     chip.dataset.cat = record.category || "";
+    if (record.goldCore) chip.dataset.permanent = "1";
     chip.textContent = record.label;
     decorateTagChip(chip, record);
     root.append(chip);
@@ -155,7 +183,15 @@ function renderCrisis(state) {
   const score = crisisOf(state);
   const level = crisisLevel(state, score);
   const box = $("crisis-alert");
-  if (box) box.dataset.level = level;
+  const memeWarn = memeDossierWarningOf(state.character) || state.character?.memeDossierWarning;
+  if (box) {
+    box.dataset.level = memeWarn ? (memeWarn.level || "meme") : level;
+    box.classList.toggle("is-meme-dossier", Boolean(memeWarn));
+  }
+  const stamp = box?.querySelector(".crisis-stamp");
+  if (stamp) {
+    stamp.textContent = memeWarn?.stamp ? `⚠️ ${memeWarn.stamp}` : "檔案警示";
+  }
   const ledger = state.ledger || {};
   const bits = [];
   if (SHOW_REPUTATION_UI) {
@@ -164,7 +200,7 @@ function renderCrisis(state) {
     if (ledger.infamy) bits.push(`惡名 ${Math.round(ledger.infamy)}`);
     if (ledger.reputation != null) bits.push(`聲望 ${Math.round(ledger.reputation)}`);
     if (ledger.socialCredit != null) bits.push(`社會信用 ${Math.round(ledger.socialCredit)}`);
-  } else if (state.ready) {
+  } else if (state.ready && !memeWarn) {
     bits.push(describeSocialFeedback(ledger, {
       salt: (state.time?.totalWeeksLived || 0) + (ledger.reputation || 0),
       upheaval: state.upheaval,
@@ -186,12 +222,14 @@ function renderCrisis(state) {
   const endedFatal = Boolean(state.ending?.fatal || state.ending?.kind === "death");
   text("crisis-alert-text", state.gameOver
     ? (endedFatal ? "當事人已死。檔案已封存。" : "這一局到此為止。檔案已封存。")
-    : CRISIS_COPY[level] || CRISIS_COPY.idle);
-  text("crisis-alert-sub", bits.length
-    ? bits.join(" · ")
-    : (SHOW_REPUTATION_UI
-      ? "街對你的態度寫在這裡。"
-      : "街對你的態度寫在這裡。"));
+    : (memeWarn?.text || CRISIS_COPY[level] || CRISIS_COPY.idle));
+  text("crisis-alert-sub", memeWarn
+    ? [memeWarn.sub, ...bits].filter(Boolean).join(" · ")
+    : (bits.length
+      ? bits.join(" · ")
+      : (SHOW_REPUTATION_UI
+        ? "街對你的態度寫在這裡。"
+        : "街對你的態度寫在這裡。")));
 }
 
 function renderFigureLog(state) {
@@ -204,7 +242,26 @@ function renderFigureLog(state) {
   const relations = Object.entries(history.relations || {});
   const divergences = history.divergences || [];
   const rows = [];
+  const plate = list.closest(".figure-log");
+  const memeLog = memeFigureContactLogOf(state.character);
+  if (plate) plate.classList.toggle("is-meme-archive", memeLog.length > 0);
+  const noteEl = plate?.querySelector(".plate-note");
+  if (noteEl) {
+    noteEl.textContent = memeLog.length
+      ? "迷因傳奇接觸軌跡：街頭崛起、數位傳播與精神碰撞的機密紀錄。"
+      : "交集、結盟、敵對，以及這條街之後開始跟以前不一樣的說法。";
+  }
 
+  for (const row of memeLog) {
+    rows.push({
+      id: row.who,
+      butterfly: Boolean(row.butterfly),
+      meme: true,
+      who: row.who,
+      rel: row.rel,
+      note: row.note,
+    });
+  }
   for (const [id, rel] of relations) {
     rows.push({
       id,
@@ -235,9 +292,10 @@ function renderFigureLog(state) {
     status.hidden = true;
   }
 
-  for (const row of rows.slice(0, 10)) {
+  for (const row of rows.slice(0, 12)) {
     const li = document.createElement("li");
     if (row.butterfly) li.classList.add("is-butterfly");
+    if (row.meme) li.classList.add("is-meme-contact");
     const who = document.createElement("div");
     who.className = "who";
     who.textContent = row.who;
@@ -253,10 +311,12 @@ function renderFigureLog(state) {
 
   if (inertia) {
     const value = Math.round(history.inertia || 0);
-    inertia.hidden = value <= 0 && !history.rewritten;
-    inertia.textContent = history.rewritten || value >= 12
-      ? "街上開始傳另一套說法，和你記得的對不上。"
-      : "街上的說法還沒跟你記得的那套拆開。";
+    inertia.hidden = value <= 0 && !history.rewritten && !memeLog.length;
+    inertia.textContent = memeLog.length
+      ? "本檔已掛載迷因傳奇接觸卷宗；年表偏移另計。"
+      : (history.rewritten || value >= 12
+        ? "街上開始傳另一套說法，和你記得的對不上。"
+        : "街上的說法還沒跟你記得的那套拆開。");
   }
 }
 

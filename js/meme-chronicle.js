@@ -38,7 +38,7 @@ const RICARDO_FORTNIGHT = Object.freeze([
   "這兩週是{year}年，{place}。當事人 {age} 歲。里約的熱風把紅色頭巾與舞步一齊吹亮，香蕉皮在石階上閃了一下又被踢開",
   "{year}年的{city}，陽光比規矩先到。{name}把絕對自由踩進每一步，熱帶的節奏不等人喊口令",
   "這兩週{city}的山海階梯還在抖。紅色頭巾、赤足與笑聲寫在同一條巷，迷因舞王不當班也在跳",
-  "{year}年，{place}。二十四歲的盛年把巴西熱情押在街頭：香蕉、汗與無拘無束的轉身比工牌更響",
+  "{year}年，{place}。二十四歲的盛年把巴西森巴押在街頭：香蕉、汗與無拘無束的轉身比工牌更響",
   "{year}年，{city}港口風把汗味與熱帶果香吹成同一條節奏。{name}不簽班表，卻把整條坡道跳成舞台",
   "這兩週是{year}年。紅色頭巾在{city}的陽光裏發亮，旁人議論規矩，他只議論下一拍從哪裡起",
 ]);
@@ -131,13 +131,13 @@ export function composeMemeTagBeat(rng, ctx = {}, options = []) {
 export function memePeakJournalLine(character = {}) {
   const id = character.specialPresetId;
   if (id === "ricardo_milos") {
-    return "傳奇全盛從二十四歲寫起：里約的熱、紅色頭巾與絕對自由比課堂更早到齊。";
+    return "傳奇全盛從二十四歲寫起（二〇一一年前後）：里約的熱、紅色頭巾與絕對自由比課堂更早到齊。";
   }
   if (id === "billy_herrington") {
-    return "傳奇全盛從二十四歲寫起：摔角墊、兄貴氣與哲學視角把幼年與求學整段略過。";
+    return "傳奇全盛從二十四歲寫起（一九九三年）：摔角墊、兄貴氣與哲學視角把幼年與求學整段略過。";
   }
   if (id === "tadokoro_koji") {
-    return "傳奇全盛從二十四歲寫起：下北澤、打工班表與野獸氣息直接上場，幼年卷宗略過。";
+    return "傳奇全盛從二十四歲寫起（一九九九年訪談時代）：下北澤、打工班表與野獸氣息直接上場，幼年卷宗略過。";
   }
   return "傳奇全盛從二十四歲寫起。";
 }
