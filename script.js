@@ -277,9 +277,9 @@ export class CenturyLifeLoop {
     this.engine = null;
     this.state = null;
     this.bound = false;
-    /** Strict digit egg buffer — only exact "114514" may fire. */
-    this._keyBuffer = "";
-    this._eggTimer = null;
+    /** 114514 egg: digit sequence buffer; fires only on exact match. */
+    this._inputSequence = "";
+    this._lastKeyTime = Date.now();
   }
 
   survivalCoefficient(age = this.age) {
@@ -377,35 +377,39 @@ export class CenturyLifeLoop {
   }
 
   _clearEggBuffer() {
-    this._keyBuffer = "";
-    if (this._eggTimer) {
-      clearTimeout(this._eggTimer);
-      this._eggTimer = null;
-    }
-  }
-
-  _armEggBufferTimeout() {
-    if (this._eggTimer) clearTimeout(this._eggTimer);
-    this._eggTimer = setTimeout(() => {
-      this._keyBuffer = "";
-      this._eggTimer = null;
-    }, 3000);
+    this._inputSequence = "";
   }
 
   /**
-   * Strict key-sequence buffer for the 114514 egg.
-   * Digits append into a 6-char sliding window; fires only on exact "114514".
-   * Returns true only when the egg was triggered.
+   * Strict 114514 key buffer (idle-reset 2s).
+   * Appends only event.key digits; unlocks only when sequence === "114514".
+   * Returns true only when the egg fired.
    */
-  _feedEggSeq(digit) {
-    const ch = String(digit || "");
-    if (!/^[0-9]$/.test(ch)) return false;
-    this._keyBuffer = `${this._keyBuffer}${ch}`.slice(-6);
-    this._armEggBufferTimeout();
-    if (this._keyBuffer !== "114514") return false;
-    this._clearEggBuffer();
-    this.forceTadokoroEgg();
+  _feedEggKeyBuffer(event) {
+    const currentTime = Date.now();
+    if (currentTime - this._lastKeyTime > 2000) {
+      this._inputSequence = "";
+    }
+    this._lastKeyTime = currentTime;
+
+    if (!/^[0-9]$/.test(event.key)) return false;
+
+    this._inputSequence += event.key;
+    if (this._inputSequence.length > 6) {
+      this._inputSequence = this._inputSequence.slice(-6);
+    }
+
+    // Must equal the full string — a lone "1" never unlocks.
+    if (this._inputSequence !== "114514") return false;
+
+    this._inputSequence = "";
+    this.triggerTadokoroKoji();
     return true;
+  }
+
+  /** Alias for the egg unlock path — applies Tadokoro preset via initNewGame. */
+  triggerTadokoroKoji() {
+    return this.forceTadokoroEgg();
   }
 
   _isEditableKeyTarget(target) {
@@ -415,13 +419,6 @@ export class CenturyLifeLoop {
     if (target.isContentEditable) return true;
     if (typeof target.closest === "function" && target.closest("[contenteditable='true']")) return true;
     return false;
-  }
-
-  _digitFromKeyEvent(event) {
-    if (/^[0-9]$/.test(event.key)) return event.key;
-    if (event.code && /^Digit[0-9]$/.test(event.code)) return event.code.slice(5);
-    if (event.code && /^Numpad[0-9]$/.test(event.code)) return event.code.slice(6);
-    return null;
   }
 
   choose(index) {
@@ -492,19 +489,13 @@ export class CenturyLifeLoop {
       if (event.ctrlKey && event.shiftKey && (event.key === "Y" || event.code === "KeyY")) {
         event.preventDefault();
         this._clearEggBuffer();
-        this.forceTadokoroEgg();
+        this.triggerTadokoroKoji();
         return;
       }
-      const digit = this._digitFromKeyEvent(event);
-      if (digit != null) {
-        // Feed buffer first; only exact "114514" returns true.
-        if (this._feedEggSeq(digit)) {
-          event.preventDefault();
-          return;
-        }
-      } else if (!event.ctrlKey && !event.metaKey && !event.altKey) {
-        // Non-digit breaks the sequence so stray keys cannot complete it later.
-        this._clearEggBuffer();
+      // Exact "114514" only — never fire on a single "1".
+      if (this._feedEggKeyBuffer(event)) {
+        event.preventDefault();
+        return;
       }
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
       const choiceIndex = map[event.key] ?? map[event.code];
@@ -550,7 +541,7 @@ let app = null;
 
 function exposeGlobals() {
   if (typeof window === "undefined") return;
-  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY, forceTadokoroEgg: () => app?.forceTadokoroEgg?.() };
+  window.LifeSim = { GameEngine, GenesisEngine, CenturyLifeLoop, app, SHOW_REPUTATION_UI, canBeginNewLife, SAVE_KEY, forceTadokoroEgg: () => app?.forceTadokoroEgg?.(), triggerTadokoroKoji: () => app?.triggerTadokoroKoji?.() };
   window.GameEngine = GameEngine;
   window.GenesisEngine = GenesisEngine;
   window.CenturyLifeLoop = CenturyLifeLoop;
