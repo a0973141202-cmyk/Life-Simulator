@@ -106,6 +106,12 @@ function crisisLevel(state, score) {
   return state.ready ? "calm" : "idle";
 }
 
+function characterDisplayName(character = null) {
+  // Render original-script names as stored; never localize Latin / Japanese originals.
+  const raw = character?.name || character?.fullName || character?.specialPresetFullName || "";
+  return String(raw || "").trim() || "未名";
+}
+
 function figureName(id) {
   return FIGURE_INDEX[id]?.name || "一位公開人物";
 }
@@ -454,7 +460,7 @@ function renderEvent(state) {
   }
   const title = document.createElement("h3");
   title.textContent = state.character
-    ? `${state.character.name || "未名"} · ${state.stage?.label || ""}`
+    ? `${characterDisplayName(state.character)} · ${state.stage?.label || ""}`
     : "尚未開檔";
   lead.append(title);
   const year = liveYear;
@@ -584,7 +590,7 @@ function paintArchive(state) {
   text("current-age", `${time.ageYears}歲`);
   text("current-location", location);
   text("current-environment", uniqueEnv.join(" · ") || "—");
-  text("character-name", character.name || "未名");
+  text("character-name", characterDisplayName(character));
   text("file-seed", String(state.seed ?? "—"));
   text("era-name", state.era?.name || "—");
   text("life-stage", state.stage?.label || "—");
@@ -635,7 +641,7 @@ function paintMementoCard(card, fallback = {}) {
   const ending = fallback.ending || {};
   text("death-kicker", card?.kicker || res.kicker || (ending.fatal === false ? "這一局到此為止" : "當事人已死"));
   text("death-resolution-title", card?.title || res.title || (ending.fatal === false ? "人生結算" : "死亡證明"));
-  text("death-name", card?.name || res.name || character.name || "未名");
+  text("death-name", card?.name || res.name || characterDisplayName(character));
   text("death-birthplace", card?.birthplace || res.birthplace || character.birthplaceLabel || "出生地未登記");
   text("death-age", card?.ageLine || res.ageLine || (card?.ageYears != null ? `享年 ${card.ageYears} 歲` : "—"));
   text("death-weeks", card?.weeksLine || (card?.weeksLived != null ? `存活 ${card.weeksLived} 週` : "—"));

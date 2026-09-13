@@ -126,6 +126,7 @@ export const TADOKORO_KOJI_PRESET = Object.freeze({
   id: "tadokoro_koji",
   oddsDenominator: 114514,
   name: "田所浩二",
+  fullName: "田所浩二",
   gender: "male",
   settlementId: "shimokitazawa",
   familyClass: "worker",
@@ -157,7 +158,7 @@ export const BILLY_PERSONA_TAGS = Object.freeze([
 export const BILLY_HERRINGTON_PRESET = Object.freeze({
   id: "billy_herrington",
   oddsDenominator: 10000,
-  name: "比利·海靈頓",
+  name: "Billy Herrington",
   fullName: "William Glen Harold \"Billy\" Herrington",
   gender: "male",
   settlementId: "newyork",
@@ -169,9 +170,9 @@ export const BILLY_HERRINGTON_PRESET = Object.freeze({
   statsBoost: Object.freeze({ health: 16, sanity: 4 }),
   tags: BILLY_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把比利·海靈頓寫在紐約。移民碼頭、體育館更衣室與摔角墊比摩天樓更早把他圍住。一九六九年七月十四日落地，一九九三年滿二十四歲時，William Glen Harold 這個長名在街上早已縮成 Billy。",
+    birth: "戶籍把 Billy Herrington 寫在紐約。移民碼頭、體育館更衣室與摔角墊比摩天樓更早把他圍住。一九六九年七月十四日落地，一九九三年滿二十四歲時，William Glen Harold \"Billy\" Herrington 這個長名在街上早已縮成 Billy。",
     awakening: "傳奇全盛略過幼年卷宗，落在九〇年代初摔角與影視的黃金窗口。兄貴摔角、深邃哲學與森之妖精並排：溫柔重情，困境來了也先以摔角手的大度站穩。",
-    weekLead: "一九九三年的紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。比利·海靈頓按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
+    weekLead: "一九九三年的紐約這兩週仍是碼頭風、體育館燈與街頭的熱血帳。Billy Herrington 按傳奇那一套走路：該扛的扛，該挺的挺，該把人拉起來的絕不先鬆手。",
     outline: "newyork|billy_herrington|aniki|1993",
   }),
 });
@@ -189,7 +190,7 @@ export const RICARDO_PERSONA_TAGS = Object.freeze([
 export const RICARDO_MILOS_PRESET = Object.freeze({
   id: "ricardo_milos",
   oddsDenominator: 10000,
-  name: "里卡多·米洛斯",
+  name: "Ricardo Milos",
   fullName: "Ricardo Milos",
   gender: "male",
   settlementId: "rio",
@@ -200,9 +201,9 @@ export const RICARDO_MILOS_PRESET = Object.freeze({
   themeClass: "preset-rio-banana",
   tags: RICARDO_PERSONA_TAGS.slice(),
   opening: Object.freeze({
-    birth: "戶籍把里卡多·米洛斯寫在巴西里約熱內盧。山海階梯、熱帶陽光與港口節奏比官署更早把他叫醒。一九八七年落地，二〇一一年滿二十四歲時，紅色頭巾與香蕉傳奇已經寫進步伐。",
+    birth: "戶籍把 Ricardo Milos 寫在巴西里約熱內盧。山海階梯、熱帶陽光與港口節奏比官署更早把他叫醒。一九八七年落地，二〇一一年滿二十四歲時，紅色頭巾與香蕉傳奇已經寫進步伐。",
     awakening: "傳奇全盛略過幼年卷宗，落在數位檔案庫把里約節奏複製到全球的那幾年。絕對自由、迷因舞步與巴西森巴並排：危機來了也能華麗轉身，樂天不散。",
-    weekLead: "二〇一一年的里約這兩週仍是山海風與街頭節奏。里卡多·米洛斯按傳奇那一套走路：該舞就舞，該自由就自由。",
+    weekLead: "二〇一一年的里約這兩週仍是山海風與街頭節奏。Ricardo Milos 按傳奇那一套走路：該舞就舞，該自由就自由。",
     outline: "rio|ricardo_milos|banana|2011",
   }),
 });
@@ -342,11 +343,22 @@ export function applySpecialPresetOverrides(overrides = {}, preset) {
   return next;
 }
 
-export function stampSpecialOpening(character, preset) {
-  if (!character || !preset?.opening) return character;
-  character.specialPresetId = preset.id;
+export function ensureOriginalPresetName(character, presetId = null) {
+  if (!character) return character;
+  const id = presetId || character.specialPresetId;
+  const preset = SPECIAL_PRESETS[id];
+  if (!preset?.name) return character;
+  character.name = preset.name;
+  if (preset.fullName) character.fullName = preset.fullName;
   character.specialPresetLabel = preset.name;
   character.specialPresetFullName = preset.fullName || preset.name;
+  return character;
+}
+
+export function stampSpecialOpening(character, preset) {
+  if (!character || !preset?.opening) return character;
+  ensureOriginalPresetName(character, preset.id);
+  character.specialPresetId = preset.id;
   character.specialThemeClass = preset.themeClass || "";
   if (preset.statsBoost && character.stats) {
     for (const [key, delta] of Object.entries(preset.statsBoost)) {

@@ -277,7 +277,8 @@ export class CenturyLifeLoop {
     this.engine = null;
     this.state = null;
     this.bound = false;
-    this._eggSeq = [];
+    /** Strict digit egg buffer — only exact "114514" may fire. */
+    this._keyBuffer = "";
     this._eggTimer = null;
   }
 
@@ -375,44 +376,52 @@ export class CenturyLifeLoop {
     }
   }
 
-  _clearEggSeq() {
-    this._eggSeq = [];
+  _clearEggBuffer() {
+    this._keyBuffer = "";
     if (this._eggTimer) {
       clearTimeout(this._eggTimer);
       this._eggTimer = null;
     }
   }
 
-  _armEggSeqTimeout() {
+  _armEggBufferTimeout() {
     if (this._eggTimer) clearTimeout(this._eggTimer);
     this._eggTimer = setTimeout(() => {
-      this._eggSeq = [];
+      this._keyBuffer = "";
       this._eggTimer = null;
-    }, 2800);
+    }, 3000);
   }
 
   /**
-   * Konami-style digit egg: 1-1-4-5-1-4.
-   * Tracks in parallel with choice hotkeys; completes → force Tadokoro.
+   * Strict key-sequence buffer for the 114514 egg.
+   * Digits append into a 6-char sliding window; fires only on exact "114514".
+   * Returns true only when the egg was triggered.
    */
   _feedEggSeq(digit) {
-    const target = "114514";
-    const next = this._eggSeq.concat(String(digit));
-    const joined = next.join("");
-    if (target.startsWith(joined)) {
-      this._eggSeq = next;
-      this._armEggSeqTimeout();
-      if (joined === target) {
-        this._clearEggSeq();
-        this.forceTadokoroEgg();
-        return true;
-      }
-      return false;
-    }
-    this._eggSeq = digit === "1" ? ["1"] : [];
-    if (this._eggSeq.length) this._armEggSeqTimeout();
-    else this._clearEggSeq();
+    const ch = String(digit || "");
+    if (!/^[0-9]$/.test(ch)) return false;
+    this._keyBuffer = `${this._keyBuffer}${ch}`.slice(-6);
+    this._armEggBufferTimeout();
+    if (this._keyBuffer !== "114514") return false;
+    this._clearEggBuffer();
+    this.forceTadokoroEgg();
+    return true;
+  }
+
+  _isEditableKeyTarget(target) {
+    if (!target || target === document.body || target === document.documentElement) return false;
+    const tag = String(target.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+    if (target.isContentEditable) return true;
+    if (typeof target.closest === "function" && target.closest("[contenteditable='true']")) return true;
     return false;
+  }
+
+  _digitFromKeyEvent(event) {
+    if (/^[0-9]$/.test(event.key)) return event.key;
+    if (event.code && /^Digit[0-9]$/.test(event.code)) return event.code.slice(5);
+    if (event.code && /^Numpad[0-9]$/.test(event.code)) return event.code.slice(6);
+    return null;
   }
 
   choose(index) {
@@ -479,18 +488,23 @@ export class CenturyLifeLoop {
       this.paint();
     });
     document.addEventListener("keydown", (event) => {
-      if (event.target && ["INPUT", "TEXTAREA"].includes(event.target.tagName)) return;
+      if (this._isEditableKeyTarget(event.target)) return;
       if (event.ctrlKey && event.shiftKey && (event.key === "Y" || event.code === "KeyY")) {
         event.preventDefault();
+        this._clearEggBuffer();
         this.forceTadokoroEgg();
         return;
       }
-      const digit = (/^[0-9]$/.test(event.key) && event.key)
-        || (event.code && event.code.startsWith("Digit") ? event.code.slice(5) : null)
-        || (event.code && event.code.startsWith("Numpad") && /^\d$/.test(event.code.slice(6)) ? event.code.slice(6) : null);
-      if (digit != null && this._feedEggSeq(digit)) {
-        event.preventDefault();
-        return;
+      const digit = this._digitFromKeyEvent(event);
+      if (digit != null) {
+        // Feed buffer first; only exact "114514" returns true.
+        if (this._feedEggSeq(digit)) {
+          event.preventDefault();
+          return;
+        }
+      } else if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+        // Non-digit breaks the sequence so stray keys cannot complete it later.
+        this._clearEggBuffer();
       }
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
       const choiceIndex = map[event.key] ?? map[event.code];

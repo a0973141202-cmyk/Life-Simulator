@@ -2,7 +2,7 @@
  * Meme-legend dossier: golden-core warnings + seeded historical contact log.
  * Archival in-world tone; high-contrast UI consumes these fields.
  */
-import { MEME_LOCK_PRESET_IDS } from "./data/special-presets.js";
+import { MEME_LOCK_PRESET_IDS, ensureOriginalPresetName } from "./data/special-presets.js";
 
 export function isMemeLegendPreset(presetId) {
   return MEME_LOCK_PRESET_IDS.includes(presetId);
@@ -111,6 +111,7 @@ export function stampMemeDossier(character, presetId = null) {
   if (!character) return character;
   const id = presetId || character.specialPresetId;
   if (!isMemeLegendPreset(id)) return character;
+  ensureOriginalPresetName(character, id);
   const warning = MEME_DOSSIER_WARNINGS[id];
   const log = MEME_FIGURE_CONTACT_LOG[id] || [];
   character.memeDossierWarning = warning ? { ...warning } : null;
