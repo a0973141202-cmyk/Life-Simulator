@@ -75,6 +75,15 @@ export function earlyChildAllowed(item, ctx = {}) {
     if (item.lane === "play") return false;
     if (survivalish) return true;
     if (item.daily && String(item.lifeState || item.state || "") === "home_child") return true;
+    // Live household mint (debt / bowl / door duty) is still early-child survival work,
+    // not park-outing — allow when not frivolous so clicks are not soft-locked.
+    if (
+      (item.liveTagMint || item.tagDriven)
+      && !hits(EARLY_CHILD_FRIVOLOUS_PATTERNS, choiceText)
+      && (item.lane === "family" || item.lane === "survival" || item.lane === "illness" || !item.lane)
+    ) {
+      return true;
+    }
     return false;
   }
 

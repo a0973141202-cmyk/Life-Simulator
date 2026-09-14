@@ -41,9 +41,75 @@ let hallBrowseOpen = false;
 let selectedHallId = null;
 let onHallSelect = () => {};
 let onHallClose = () => {};
+let choiceBusy = false;
+let choiceBusyTimer = 0;
+let choiceUnlockTimer = 0;
+const CHOICE_BUSY_TIMEOUT_MS = 8000;
+const CHOICE_DEBOUNCE_MS = 280;
+
+export function isChoiceBusy() {
+  return choiceBusy;
+}
+
+function clearChoiceTimers() {
+  if (choiceBusyTimer) {
+    clearTimeout(choiceBusyTimer);
+    choiceBusyTimer = 0;
+  }
+  if (choiceUnlockTimer) {
+    clearTimeout(choiceUnlockTimer);
+    choiceUnlockTimer = 0;
+  }
+}
+
+function applyChoiceBusyDom(busy) {
+  const root = document.getElementById("choices-container");
+  if (root) {
+    root.classList.toggle("is-choice-busy", busy);
+    root.querySelectorAll(".choice-btn").forEach((btn) => {
+      btn.disabled = busy;
+      btn.setAttribute("aria-disabled", busy ? "true" : "false");
+    });
+  }
+  document.body.classList.toggle("life-choice-busy", busy);
+}
+
+export function setChoiceBusy(busy, reason = "") {
+  choiceBusy = Boolean(busy);
+  clearChoiceTimers();
+  applyChoiceBusyDom(choiceBusy);
+  if (choiceBusy) {
+    // Failsafe only — normal unlock is holdChoiceBusy / setChoiceBusy(false).
+    choiceBusyTimer = setTimeout(() => {
+      choiceBusyTimer = 0;
+      setChoiceBusy(false, "busy-timeout");
+    }, CHOICE_BUSY_TIMEOUT_MS);
+  }
+}
+
+/** Lock after paint, then auto-unlock after debounceMs (no rAF — avoids background-tab stalls). */
+export function holdChoiceBusy(debounceMs = CHOICE_DEBOUNCE_MS, reason = "post-paint-hold") {
+  setChoiceBusy(true, reason);
+  if (choiceUnlockTimer) {
+    clearTimeout(choiceUnlockTimer);
+    choiceUnlockTimer = 0;
+  }
+  const ms = Math.max(80, Number(debounceMs) || CHOICE_DEBOUNCE_MS);
+  choiceUnlockTimer = setTimeout(() => {
+    choiceUnlockTimer = 0;
+    setChoiceBusy(false, "choose-painted");
+  }, ms);
+}
 
 function choose(index) {
-  onChoose(index);
+  if (choiceBusy) return;
+  try {
+    onChoose(index);
+  } catch (error) {
+    console.error("LifeSim: 選項點擊未捕獲例外", error);
+    setChoiceBusy(false, "choose-throw");
+    throw error;
+  }
 }
 
 function $(id) {
@@ -520,7 +586,7 @@ function renderChoices(state) {
     btn.className = "choice choice-btn";
     if (option.style === "fog" || option.effectsHidden) btn.classList.add("is-fog");
     if (option.butterfly) btn.classList.add("is-butterfly");
-    btn.dataset.index = String(option.index ?? index);
+    btn.dataset.index = String(index);
     const gate = document.createElement("span");
     gate.className = "choice-index";
     gate.textContent = GATES[index] || String(index + 1);
@@ -528,7 +594,9 @@ function renderChoices(state) {
     body.className = "choice-text";
     body.textContent = sanitizePublicLine(option.text) || "（空白選項）";
     btn.append(gate, body);
-    btn.addEventListener("click", () => choose(Number(btn.dataset.index)));
+    btn.addEventListener("click", () => {
+      choose(index);
+    });
     root.append(btn);
   });
 }

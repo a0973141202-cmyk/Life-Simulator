@@ -290,18 +290,23 @@ export function gateWeeklyOutput(rng, payload = {}, ctx = {}) {
   }
   options = ensureDistinctChoiceTriad(rng, options, ctx);
 
-  // Align chronicle to the final triad: rebuild lean record, then sanitize.
-  const aligned = composeAlignedChronicle(rng, ctx, options);
-  const narrative = monitorPublicText(rng, aligned || payload.narrative, ctx, {
+  // Pre-sanitize narrative only — final chronicle + stakes owned by Narrative & Logic Engine.
+  const narrative = monitorPublicText(rng, payload.narrative || "", ctx, {
     kind: "narrative",
     character: ctx.character,
     options,
-    maxUnits: 6,
+    maxUnits: 8,
   });
   return {
     ...payload,
     narrative,
     options,
+    weekScene: {
+      pressure: null,
+      meme: false,
+      sceneAligned: false,
+      deferredToNarrativeLogic: true,
+    },
     textMonitor: {
       gated: true,
       liveWeeklyNarrative: true,
@@ -315,6 +320,7 @@ export function gateWeeklyOutput(rng, payload = {}, ctx = {}) {
       tagAlignedChronicle: true,
       tagDrivenOnly: true,
       zeroHardcodedTemplates: true,
+      weekSceneDriven: false,
       variationAxes: VARIATION_AXES.slice(),
     },
   };

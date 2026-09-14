@@ -65,22 +65,35 @@ export function pickDistinctLanes(ctx = {}, count = 3) {
 function hardSlotLine(ctx, index, used) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const city = facts.city || "此地";
+  const age = Number(facts.age || ctx.ageYears || 0);
   const who = facts.motherAlive
     ? (facts.motherName ? `母親${facts.motherName}` : "母親")
     : (facts.fatherAlive
       ? (facts.fatherName ? `父親${facts.fatherName}` : "父親")
       : "家裏的人");
-  const food = facts.hungry || facts.poor ? "眼前那口能吃的" : "這一週的糧";
-  const slots = [
+  const food = facts.hungry || facts.poor ? "眼前還能進口的東西" : "這一週的糧";
+  const childSlots = [
     `把門栓插上，聽見拍門先裝作沒人`,
     `去${city}把能換成${food}的路走完`,
     `不按屋裏的口令把最小的那碗交出去`,
   ];
-  const frail = [
+  const adultSlots = [
+    `先守住這兩週的飯錢與門面，不把底牌一次交出去`,
+    `去${city}把能換成${food}的路走完`,
+    `不按旁人口令把名字或底牌交出去`,
+  ];
+  const frailChild = [
     `躺著把力氣留給去廁所那一下`,
     `把冷毛巾和能喝的水留給還在燒的人`,
     `按${who}交代的把水打回來、把碗洗乾淨`,
   ];
+  const frailAdult = [
+    `躺著把力氣留給退燒與下一頓，工錢這兩週先擱下`,
+    `把冷毛巾和能喝的水留給還在燒的人，自己的班可以後補`,
+    `用還撐得住的力氣，幫${who}把眼前能結的帳結完`,
+  ];
+  const slots = age >= 20 ? adultSlots : childSlots;
+  const frail = age >= 20 ? frailAdult : frailChild;
   const pool = Number(facts.health ?? 50) <= 28 ? frail : slots;
   let line = pool[index % pool.length];
   if (clashesAny(line, used)) {

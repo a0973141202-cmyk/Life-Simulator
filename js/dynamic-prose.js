@@ -197,7 +197,12 @@ function householdWho(facts = {}) {
 }
 
 function kinWord(facts = {}) {
-  return facts.orphan ? "這戶剩下的人" : "最小的那碗";
+  if (facts.orphan) return "這戶剩下的人";
+  if (Number(facts.age || 0) >= MATURE_ADULT_MIN) {
+    if (facts.motherAlive || facts.fatherAlive) return "還同住的人";
+    return "還跟你一塊撐的人";
+  }
+  return "最小的那碗";
 }
 
 function parentClause(facts) {
@@ -438,32 +443,36 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
   if (focus(["persona"], /^persona_/)) {
     const drivers = (extra.driverTags || []).map(String);
     if (drivers.includes("persona_banana_legend") || drivers.includes("persona_meme_dancer") || drivers.includes("persona_brazil_samba") || drivers.includes("persona_absolute_freedom") || drivers.includes("persona_invincible_smile")) {
-      if (dir === "seek") return `把巴西森巴與自由的舞步踩進${city}這兩週`;
-      if (dir === "help") return `用無敵笑容與節奏把${who}從沉悶裏拉起來`;
-      if (dir === "resist") return `不拿絕對自由換一時規矩，仍按自己的步伐走`;
-      return `香蕉傳奇還在${city}的風裡，這兩週熱也不散`;
+      if (dir === "seek") return `把巴西森巴踩進${city}街頭，用掌聲與小費換這兩週的口糧`;
+      if (dir === "help") return `用無敵笑容把${who}從沉悶裏拉起來，換一點人情與名聲`;
+      if (dir === "resist") return `不拿絕對自由換一時規矩，寧可少賺也不簽死班表`;
+      if (dir === "flee") return `規矩一緊就華麗轉身離開${city}會扣住你的那條路`;
+      return `紅色頭巾不收，在${city}把這兩週的舞步跳完，名聲先於工牌`;
     }
     if (drivers.includes("persona_aniki_wrestle") || drivers.includes("persona_biochem") || drivers.includes("persona_forest_fairy")) {
-      if (dir === "resist" || dir === "guard") return `用兄貴摔角練出的身子，把${city}這兩週的衝突或危機硬扛過去`;
-      if (dir === "endure") return `勞動與體能帳先交給摔角墊上的節奏，把${year}年這兩週能扛的扛完`;
-      if (dir === "seek") return `把力氣押進${city}還認摔角與鐵杠的那條路`;
-      return `兄貴摔角與 Biochem 傳說並排，把${city}這兩週的生存帳先做完`;
+      if (dir === "resist" || dir === "guard") return `用摔角練出的身子硬扛${city}這兩週的衝突，換一身傷也守住名聲`;
+      if (dir === "endure") return `勞動與體能帳交給鐵杠節奏，把${year}年這兩週能扛的工錢扛完`;
+      if (dir === "seek") return `把力氣押進${city}還認摔角與鐵杠的那條路，賭掌聲換下一季`;
+      if (dir === "help") return `以兄貴氣度先把同伴從低谷拉起，工錢可以後算`;
+      return `摔角墊的節奏還在，先把${city}這兩週的身子與人情帳做完`;
     }
     if (drivers.includes("persona_loyal_bond") || drivers.includes("persona_deep_philosophy")) {
-      if (dir === "help") return `以重情重義把同伴從低谷拉起來`;
-      if (dir === "resist") return `不丟下還在難處的人，先用深邃哲學把逆境看穿`;
+      if (dir === "help") return `以重情重義把同伴從低谷拉起來，寧可自己少拿一成`;
+      if (dir === "resist") return `不丟下還在難處的人，先用深邃哲學把逆境看穿再出手`;
       return `重情重義寫在走路的方式裏，先把${city}這兩週難處帶過`;
     }
     if (drivers.includes("persona_deep_philosophy") || drivers.includes("persona_forest_fairy")) {
       if (dir === "help") return `以森之妖精的氣度站到人群前，把${city}這兩週能一起做完的事先帶起來`;
       if (dir === "resist") return `不讓時代動盪先吞掉神智，仍把人往前帶`;
-      return `深邃哲學與森之妖精氣並排，把${year}年這兩週的群眾帳扛住`;
+      return `深邃哲學與森之氣度同在，把${year}年這兩週的群眾帳扛住`;
     }
     if (drivers.includes("persona_shimokita_labor") || drivers.includes("persona_beast_senpai") || drivers.includes("persona_114514") || drivers.includes("persona_natsumikan") || drivers.includes("persona_stench_foul") || drivers.includes("persona_onmad_classic")) {
-      if (dir === "resist" || dir === "guard") return `憑野獸先輩的直覺在${city}街頭的縫裡找一條活路`;
-      if (dir === "flee") return `危機一響就鑽進${city}巷弄，不跟絕境硬剛到底`;
-      if (dir === "seek") return `按下北澤打工認得的節奏，把${year}年這兩週能搏的搏完`;
-      return `114514 與惡臭傳說並排，把${city}這兩週極端的帳扛過`;
+      if (dir === "resist" || dir === "guard") return `憑野獸先輩的直覺在${city}街頭找活路，寧可惡名也不把命押死在班表上`;
+      if (dir === "flee") return `危機一響就鑽進${city}巷弄，丟掉這份工也先保住下一頓`;
+      if (dir === "seek") return `按下北澤打工認得的節奏，把${year}年這兩週能搏的薪水與怪事搏完`;
+      if (dir === "help") return `用黑色幽默先幫同伴扛過這班，夏蜜柑的酸氣也擋不住伸手`;
+      if (dir === "endure") return `惡臭傳聞與罰金一起忍，把${city}這兩週的夜班先熬完`;
+      return `帶著野獸氣息把${city}這兩週的班表與空錢包扛過，荒謬也算一種活路`;
     }
     if (drivers.includes("persona_high_roller") || drivers.includes("persona_quit_ahead")) {
       if (dir === "seek") return `把口袋裏能押的押進${city}這一局，贏了就收`;
@@ -561,6 +570,14 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `按這戶在${city}被叫的那套身分，把${year}年這兩週走完`;
   }
   if (kind === "hunger") {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "seek") return `去${city}把能換成${food}、或換成現錢的路走完，先填這兩週的空碗`;
+      if (dir === "guard") return `先守住還沒被扣走的那口${food}與房租底線`;
+      if (dir === "resist") return `不把僅剩的${food}讓給先伸手的債主或工頭`;
+      if (dir === "flee") return `帶著空碗離開${city}還在排隊罰站的那條巷`;
+      if (dir === "help") return `把能分的${food}讓給還跟你同住的人，自己先餓一頓`;
+      return `把眼前的${food}吃掉，不把下一頓的指望押在空話上`;
+    }
     if (dir === "seek") return `去${city}把能換成${food}的路走完`;
     if (dir === "guard") return `把${who}還沒扣走的那口${food}護住`;
     if (dir === "resist") return `不把${food}讓給先伸手的人`;
@@ -569,6 +586,14 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
     return `把眼前的${food}吃掉，不留給${year}年下一頓`;
   }
   if (kind === "illness") {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "seek") return `去${city}問還有沒有退燒藥或止瀉的粉，寧可靠賒也先把燒壓住`;
+      if (dir === "guard") return `把冷毛巾和能喝的水留給還在燒的人，自己的班可以後補`;
+      if (dir === "resist") return `不讓人把你從床上拖去上工，寧可扣薪也不把病拖垮`;
+      if (dir === "flee") return `燒還沒退也先離開還在逼你出勤的${housing}`;
+      if (dir === "help") return `用冷毛巾幫${who}把額上的熱降下來，這兩週名聲讓給人情`;
+      return `躺著把力氣留給退燒與下一頓，工錢這兩週先擱下`;
+    }
     if (dir === "seek") return `去${city}問還有沒有退燒藥或止瀉的粉`;
     if (dir === "guard") return `把冷毛巾和能喝的水留給還在燒的人`;
     if (dir === "resist") return `不讓人把你從床上拖去上工`;
@@ -607,6 +632,14 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
       : `趁大人沒喊之前，在巷口踢一輪罐子`;
   }
   if (kind === "money") {
+    if (age >= MATURE_ADULT_MIN) {
+      if (dir === "seek") return `向${city}熟臉求一點能換成${food}的賒，先把這兩週的帳撐住`;
+      if (dir === "guard") return `先付會砸門的那一筆：房租、糧或罰，保住還能公開說的體面`;
+      if (dir === "resist") return `不把能當的東西一次交出去抵帳，寧可靠賒也留底`;
+      if (dir === "flee") return `帶著還能當的東西離開會砸門的那一戶，先保住下一頓`;
+      if (dir === "help") return `把能當的東西換成${kin}的那口${food}，自己這週緊一點`;
+      return `把能當的東西拿去換這兩週的${food}與房租`;
+    }
     if (dir === "seek") return `向${city}熟臉求一點能換成${food}的賒`;
     if (dir === "guard") return `先付會砸門的那一筆：房租、糧或罰`;
     if (dir === "resist") return `不把能當的東西一次交出去`;
@@ -626,14 +659,17 @@ function assembleChoiceCore(rng, facts, kind, dir, extra = {}) {
 
 function saltChoiceTail(facts, dir, index, extra = {}) {
   const pulse = facts.pulseTitle || facts.upheavalLabel || "";
-  const slot = Math.abs(Number(index || 0) + Number(facts.year || 0) + Number(facts.age || 0)) % 5;
+  const age = Number(facts.age || 0);
+  const slot = Math.abs(Number(index || 0) + Number(facts.year || 0) + age) % 5;
   if (slot === 1 && pulse && /封|關|戒嚴|宵禁|清人|封鎖/.test(pulse)) {
     return `趁${pulse}還沒把門封死`;
   }
   if (slot === 1 && pulse) return `街上還在傳${pulse}`;
-  if (slot === 2 && facts.householdHarsh) return "屋裏有人盯著";
-  if (slot === 3 && (facts.age || 0) <= 12) return "趕在大人喊之前";
-  if (slot === 4 && facts.poor) return "口袋是空的";
+  if (slot === 2 && facts.householdHarsh && age < MATURE_ADULT_MIN) return "屋裏有人盯著";
+  if (slot === 2 && facts.householdHarsh) return "債主或工頭還在盯著";
+  if (slot === 3 && age <= 12) return "趕在大人喊之前";
+  if (slot === 3 && age >= MATURE_ADULT_MIN && facts.poor) return "這注押的是下一週的飯錢";
+  if (slot === 4 && facts.poor) return age >= MATURE_ADULT_MIN ? "口袋見底，下一頓還沒著落" : "口袋是空的";
   if (dir === "flee" && extra.lockedLane === "world") return `${facts.city}的路口正在清人`;
   return "";
 }

@@ -10,6 +10,7 @@ import { composeFortnightRecord, lockChronicleToClock, scrubEraCopy } from "./dy
 import { scanNarrativeFacts } from "./narrative-facts.js";
 import { publicTagLabel } from "./data/ui-zh.js";
 import { composeMemeFortnight, composeMemeTagBeat, isMemeLegendCharacter } from "./meme-chronicle.js";
+import { composeWeekScene } from "./week-scene.js";
 
 const SENTENCE_SPLIT = /(?<=[。！？])\s*|\n+/;
 const YEAR_GLUE = /((?:1[89]|20)\d{2}年[^。！？\n]{4,80}?)(?=(?:1[89]|20)\d{2}年)/g;
@@ -148,16 +149,16 @@ function tagBeat(ctx = {}, options = []) {
   }
   if (tags.some((tag) => tag.startsWith("persona_"))) {
     if (tags.includes("persona_banana_legend") || tags.includes("persona_meme_dancer") || tags.includes("persona_brazil_samba") || tags.includes("persona_invincible_smile")) {
-      return `${city}這兩週仍有巴西森巴與無敵笑容，傳奇舞步不退`;
+      return `${city}這兩週仍有巴西森巴與無敵笑容：舞步換掌聲，也換下一頓的口糧`;
     }
     if (tags.includes("persona_aniki_wrestle") || tags.includes("persona_biochem") || tags.includes("persona_forest_fairy")) {
-      return `${city}這兩週仍是體育館燈與森之妖精的夜色，勞動與危機先交給身子扛`;
+      return `${city}這兩週仍是體育館燈與森之夜色：勞動與危機先交給身子扛，名聲隨之`;
     }
     if (tags.includes("persona_loyal_bond") || tags.includes("persona_deep_philosophy")) {
       return `重情重義這兩週先伸手：同伴低谷時他不肯先鬆開`;
     }
     if (tags.includes("persona_beast_senpai") || tags.includes("persona_stench_foul") || tags.includes("persona_shimokita_labor") || tags.includes("persona_114514") || tags.includes("persona_natsumikan") || tags.includes("persona_onmad_classic")) {
-      return `下北澤這兩週仍是打工班表與夏蜜柑的酸，野獸先輩的味與危機一起來`;
+      return `下北澤這兩週仍是打工班表與夏蜜柑的酸：野獸氣息與危機一起來，薪水卻不一定準時`;
     }
     if (tags.includes("persona_high_roller") || tags.includes("persona_quit_ahead")) {
       return `${city}這兩週帳本與賭注並排，該搏的搏，該收的收`;
@@ -201,11 +202,17 @@ function tagBeat(ctx = {}, options = []) {
 
 /**
  * Build a lean, option-aligned fortnight record.
+ * Prefers unified week-scene paragraph (era-novel tone) over dossier stacks.
  */
 export function composeAlignedChronicle(rng, ctx = {}, options = []) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   ctx.narrativeFacts = facts;
   const roll = typeof rng === "function" ? rng : (() => 0.41);
+  const scene = composeWeekScene(roll, ctx, options);
+  if (scene?.chronicle) {
+    // Keep as one flowing paragraph; sanitizer may still split on 。 for dedupe.
+    return scene.chronicle;
+  }
   let intro = String(ctx.weekEncounter?.intro || "").trim();
   if (isMemeLegendCharacter(ctx.character)) {
     intro = composeMemeFortnight(roll, ctx) || intro;
@@ -213,10 +220,23 @@ export function composeAlignedChronicle(rng, ctx = {}, options = []) {
   if (!intro) {
     intro = composeFortnightRecord(roll, ctx);
   }
-  // One lead intro + at most one tag beat. No stacked year/stage/option mirrors.
+  let pressureBeat = "";
+  const pressure = String(ctx.weekEncounter?.pressure || "");
+  if (pressure === "papers") {
+    pressureBeat = `核名冊的人在核戶口。口音和衣服先於解釋`;
+  } else if (pressure === "hunger") {
+    pressureBeat = Number(facts.age || 0) >= 20
+      ? `空碗與房租比名聲先到`
+      : `空碗比功課先到`;
+  } else if (facts.pulseTitle) {
+    pressureBeat = `街上這兩週聽得到${facts.pulseTitle}`;
+  } else if (facts.upheavalLabel) {
+    pressureBeat = `街上這兩週聽得到${facts.upheavalLabel}`;
+  }
   const units = dedupeChronicleUnits([
     intro,
     tagBeat(ctx, options),
+    pressureBeat,
   ], facts, 5);
   return units.map(endPunct).join("\n").trim();
 }

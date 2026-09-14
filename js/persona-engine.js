@@ -442,7 +442,7 @@ export function mintRicardoRhythmOption(rng, ctx = {}, index = 1) {
     driverTags: RICARDO_DRIVERS.slice(),
     tagFocus: "persona",
     tagLabel: "迷因舞王",
-  }) || `把巴西森巴與自由的舞步踩進${city}這兩週，危機來了也不先收住無敵笑容`;
+  }) || `把巴西森巴踩進${city}街頭，用掌聲與小費換這兩週的口糧`;
   return {
     id: `persona_ricardo_${index}`,
     text,
@@ -451,7 +451,7 @@ export function mintRicardoRhythmOption(rng, ctx = {}, index = 1) {
     liveTagMint: true,
     driverTags: RICARDO_DRIVERS.filter((id) => hasPersona(ctx.character, id)),
     direction: "seek",
-    situation: "family",
+    situation: "labor",
     hooks: ["social", "survival"],
     ricardoRhythm: true,
     effects: { mood: 2, sanity: 1, charm: 1 },
@@ -467,7 +467,7 @@ export function mintBeastInstinctOption(rng, ctx = {}, index = 0) {
     driverTags: ["persona_beast_senpai", "persona_shimokita_labor", "persona_114514"],
     tagFocus: "persona",
     tagLabel: "野獸先輩",
-  }) || `憑野獸先輩的直覺在${city}街頭的縫裡找一條活路，危機來也不先低頭`;
+  }) || `憑野獸先輩的直覺在${city}街頭找活路，寧可惡名也不把命押死在班表上`;
   return {
     id: `persona_beast_${index}`,
     text,
@@ -477,7 +477,7 @@ export function mintBeastInstinctOption(rng, ctx = {}, index = 0) {
     driverTags: ["persona_beast_senpai", "persona_shimokita_labor", "persona_114514"]
       .filter((id) => hasPersona(ctx.character, id)),
     direction: "resist",
-    situation: "family",
+    situation: "labor",
     hooks: ["survival", "social"],
     beastInstinct: true,
     effects: { health: 1, sanity: -1, mood: 1 },
@@ -500,7 +500,7 @@ export function mintMuscleWrestleOption(rng, ctx = {}, index = 0) {
     driverTags: ["persona_aniki_wrestle", "persona_biochem", "persona_forest_fairy"],
     tagFocus: "persona",
     tagLabel: "兄貴摔角",
-  }) || `用兄貴摔角練出的身子，把${city}這兩週的勞動、衝突或危機硬扛過去`;
+  }) || `用摔角練出的身子硬扛${city}這兩週的衝突，換一身傷也守住名聲`;
   return {
     id: `persona_wrestle_${index}`,
     text,
@@ -510,7 +510,7 @@ export function mintMuscleWrestleOption(rng, ctx = {}, index = 0) {
     driverTags: ["persona_aniki_wrestle", "persona_biochem", "persona_forest_fairy"]
       .filter((id) => hasPersona(ctx.character, id)),
     direction: "resist",
-    situation: "family",
+    situation: "labor",
     hooks: ["survival", "labor", "conflict"],
     muscleWrestle: true,
     effects: { health: 2, mood: 1, sanity: 1 },

@@ -76,6 +76,7 @@ import { writeHallCard, writeLifeSave } from "./life-persist.js";
 import { composeMementoCard } from "./memento.js";
 import { composeStageClause } from "./dynamic-prose.js";
 import { gateDeathCopy, gateWeeklyOutput, monitorPublicText } from "./text-monitor.js";
+import { finalizeWeeklyOutput } from "./narrative-logic-engine.js";
 import { mintTagDrivenTriad, remintLockedTriadText } from "./tag-choice-mint.js";
 import { composeWeekEncounter } from "./week-encounter.js";
 import { socialStanding } from "./social-feedback.js";
@@ -475,6 +476,26 @@ export class GameEngine {
   }
 
   advanceTurn(choiceIndex) {
+    try {
+      return this._advanceTurnInner(choiceIndex);
+    } catch (error) {
+      console.error("LifeSim: advanceTurn 未捕獲例外", error);
+      try {
+        this.currentEvent = generateTurn(this.rng, this._context());
+        this._persist();
+      } catch (_) {
+        /* keep prior event */
+      }
+      return {
+        ok: false,
+        error: "advance_exception",
+        message: String(error?.message || error || "選項結算失敗"),
+        state: this.getGameState(),
+      };
+    }
+  }
+
+  _advanceTurnInner(choiceIndex) {
     if (!this.character) {
       return { ok: false, error: "not_initialized", message: "尚未開局。" };
     }
@@ -483,17 +504,26 @@ export class GameEngine {
     }
 
     const event = this.currentEvent;
-    const option = event?.options?.[choiceIndex];
+    const options = event?.options || [];
+    const safeIndex = Math.max(0, Math.min(options.length - 1, Number(choiceIndex)));
+    const option = Number.isInteger(Number(choiceIndex)) && options[choiceIndex]
+      ? options[choiceIndex]
+      : options[safeIndex];
     if (!option) {
-      return { ok: false, error: "invalid_choice", message: "請選擇 0、1 或 2。" };
+      return { ok: false, error: "invalid_choice", message: "請選擇 0、1 或 2。", state: this.getGameState() };
     }
 
     const ctx = this._context();
     const blocked = interceptUnsafeOption(option, ctx);
     if (blocked) {
+      console.warn("LifeSim: 選項被邊界擋下，改抽可執行三選", blocked.reason, option.id);
       this.currentEvent = generateTurn(this.rng, ctx);
       this._persist();
-      return { ...blocked, nextEvent: publicEventView(clone(this.currentEvent)) };
+      return {
+        ...blocked,
+        nextEvent: publicEventView(clone(this.currentEvent)),
+        state: this.getGameState(),
+      };
     }
     rememberChosenChoice(this.character, option, getLifeStage(ctx.ageYears || 0).id);
     rememberUnpicked(this.character, event.options, choiceIndex);
@@ -1060,17 +1090,28 @@ export class GameEngine {
       const reminted = locked
         ? remintLockedTriadText(engine.rng, engine.currentEvent.options || [], ctx)
         : mintTagDrivenTriad(engine.rng, ctx);
+      const gated = gateWeeklyOutput(engine.rng, {
+        ...engine.currentEvent,
+        options: reminted,
+      }, ctx);
       engine.currentEvent = {
         ...engine.currentEvent,
-        ...gateWeeklyOutput(engine.rng, {
-          ...engine.currentEvent,
-          options: reminted,
-        }, ctx),
+        ...finalizeWeeklyOutput(engine.rng, ctx, {
+          narrative: gated.narrative,
+          options: gated.options,
+        }),
+        textMonitor: gated.textMonitor,
       };
     } else if (engine.currentEvent && engine.character && engine.clock) {
+      const ctxLoad = engine._context();
+      const gated = gateWeeklyOutput(engine.rng, engine.currentEvent, ctxLoad);
       engine.currentEvent = {
         ...engine.currentEvent,
-        ...gateWeeklyOutput(engine.rng, engine.currentEvent, engine._context()),
+        ...finalizeWeeklyOutput(engine.rng, ctxLoad, {
+          narrative: gated.narrative,
+          options: gated.options,
+        }),
+        textMonitor: gated.textMonitor,
       };
     }
     return engine;
@@ -1095,6 +1136,13 @@ export class GameEngine {
       ageYears: time.ageYears,
       cityId: this.character.cityId,
       turnCount: this.turnCount,
+      weekEntropy: (
+        ((Number(this.turnCount) || 0) * 0.137)
+        + ((Number(time.year) || 0) * 0.011)
+        + ((Number(time.ageYears) || 0) * 0.071)
+        + ((Number(this.character?.stats?.wealth ?? this.character?.stats?.means) || 40) * 0.003)
+        + (typeof this.rng === "function" ? this.rng() : Math.random())
+      ) % 1,
       country: canonicalizeCountry(
         getSettlementCountry(settlement, time.year) || this.character.country || "",
         time.year,

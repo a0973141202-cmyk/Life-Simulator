@@ -1,5 +1,5 @@
-import { filterActionsByBoundary } from "./boundary.js";
-import { ageBand, classifyLane, incidentAllowed } from "./age-gate.js";
+import { filterActionsByBoundary, isActionAllowed } from "./boundary.js";
+import { ageBand, classifyLane, contentAllowedForAge, incidentAllowed } from "./age-gate.js";
 import { childhoodClimate } from "./early-child-filter.js";
 import { scanSemanticMismatches } from "./semantic-filter.js";
 import { applyChaosToTriad, pickChaosProfile } from "./chaos-engine.js";
@@ -79,6 +79,7 @@ import { composeExclusiveFill } from "./exclusive-fill.js";
 import { ensureDistinctChoiceTriad } from "./choice-dedupe.js";
 import { textsTooSimilar } from "./choice-similarity.js";
 import { mintTagDrivenTriad, remintLockedTriadText } from "./tag-choice-mint.js";
+import { finalizeWeeklyOutput } from "./narrative-logic-engine.js";
 import { attachOrganicContext } from "./organic-trigger.js";
 import { ensureTagCoverage, graftAsymmetricOptions } from "./tag-link-engine.js";
 import { isUntaggedBaseline, stampTagInfluence } from "./tag-influence.js";
@@ -100,6 +101,74 @@ function jitterEffects(rng, effects) {
     result[key] = value + drift;
   }
   return result;
+}
+
+function optionPlayable(option, ctx) {
+  return Boolean(option) && contentAllowedForAge(option, ctx) && isActionAllowed(option, ctx);
+}
+
+/**
+ * Final safety net: never hand the UI a triad that will soft-lock on click.
+ * Remint blocked slots with age-safe live fills.
+ */
+function sealPlayableTriad(rng, options = [], ctx = {}) {
+  const out = (options || []).slice(0, 3).map((row, index) => ({
+    ...row,
+    index: Number.isFinite(Number(row?.index)) ? Number(row.index) : index,
+  }));
+  while (out.length < 3) {
+    const fill = mintTagDrivenTriad(rng, { ...ctx, weekEntropy: rng() })[out.length]
+      || composeExclusiveFill(rng, ctx, out, ctx.character, out.length);
+    if (!fill) break;
+    out.push(stampChoiceFingerprint(cloneOption(rng, {
+      ...fill,
+      liveTagMint: true,
+      tagDriven: true,
+      zeroHardcodedTemplates: true,
+      fallback: true,
+    }, out.length, ctx)));
+  }
+  for (let index = 0; index < out.length; index += 1) {
+    let guard = 0;
+    while (!optionPlayable(out[index], ctx) && guard < 16) {
+      const refill = mintTagDrivenTriad(rng, { ...ctx, weekEntropy: rng() })[index]
+        || composeExclusiveFill(rng, ctx, out, ctx.character, index + guard * 3);
+      if (!refill) break;
+      out[index] = stampChoiceFingerprint(cloneOption(rng, {
+        ...out[index],
+        ...refill,
+        text: refill.text,
+        trueText: refill.trueText || refill.text,
+        liveTagMint: true,
+        tagDriven: true,
+        zeroHardcodedTemplates: true,
+        fallback: true,
+        lane: refill.lane || "family",
+      }, index, ctx));
+      guard += 1;
+    }
+    // Last resort: mark as household fallback so early-child harsh climate accepts it.
+    if (!optionPlayable(out[index], ctx)) {
+      const ageYears = Number(ctx.ageYears ?? ctx.narrativeFacts?.age ?? 0);
+      const adultSafe = ageYears >= 20 || isMemeLegendCharacter(ctx.character);
+      const fallbackText = adultSafe
+        ? "先守住這兩週的飯錢與門面，不把底牌一次交出去"
+        : "把最小的那碗護住，不讓人先扣走";
+      out[index] = {
+        ...out[index],
+        index,
+        fallback: true,
+        liveTagMint: true,
+        lane: "family",
+        childTheme: out[index]?.childTheme || (adultSafe ? "survival" : "hunger"),
+        hooks: [...new Set([...(out[index]?.hooks || []), "family", "survival", adultSafe ? "labor" : "hunger"])],
+        text: out[index]?.text || fallbackText,
+        trueText: out[index]?.trueText || out[index]?.text || fallbackText,
+      };
+    }
+    out[index] = { ...out[index], index };
+  }
+  return out.slice(0, 3);
 }
 
 function cloneOption(rng, action, index, ctx = {}) {
@@ -321,6 +390,7 @@ export function generateTurn(rng, state) {
     iso: time.iso || date.iso,
     week: time.week,
     turn: time.turn || date.turn,
+    turnCount: Number(state.turnCount) || 0,
     ageYears: time.ageYears,
     region: character.region,
     country: canonicalizeCountry(
@@ -345,7 +415,15 @@ export function generateTurn(rng, state) {
 
   beginTextTurn(character, ctx);
   beginExclusionTurn(character);
-  ctx.weekEntropy = rng();
+  // Force turn variance: engine entropy + live rng + turn/age/year salt.
+  const baseEntropy = Number(state.weekEntropy);
+  ctx.weekEntropy = (
+    (Number.isFinite(baseEntropy) ? baseEntropy : 0)
+    + rng()
+    + ((ctx.turnCount || 0) * 0.019)
+    + ((Number(time.ageYears) || 0) * 0.007)
+    + ((Number(time.year) || 0) * 0.0013)
+  ) % 1;
   ctx.noOptionRecycling = true;
   ctx.exclusiveOptions = true;
   ctx.contextAwareRandom = true;
@@ -714,8 +792,14 @@ export function generateTurn(rng, state) {
     ...crisisLines,
   ], ctx);
   const gated = gateWeeklyOutput(rng, { narrative: rawNarrative, options: dressedOptions }, ctx);
-  const narrative = gated.narrative;
-  const gatedOptions = ensureDistinctChoiceTriad(rng, gated.options, ctx);
+  // Narrative & Logic Engine is the sole final authority for chronicle + triad.
+  let gatedOptions = sealPlayableTriad(rng, gated.options, ctx);
+  const finalized = finalizeWeeklyOutput(rng, ctx, {
+    narrative: gated.narrative,
+    options: gatedOptions,
+  });
+  gatedOptions = finalized.options;
+  const narrative = finalized.narrative;
   rememberOfferedChoices(character, gatedOptions, stage.id);
   rememberExcluded(character, gatedOptions, {
     eventIds: [
@@ -885,10 +969,13 @@ export function generateTurn(rng, state) {
       contextualIntro: true,
       figureWeave: true,
       encounterDrivenChoices: true,
+      narrativeLogicEngine: true,
     },
     narrative,
     passiveEffects: passive.effects,
     options: gatedOptions,
+    weekScene: finalized.weekScene || null,
+    narrativeLogic: finalized.narrativeLogic || null,
     textMonitor: gated.textMonitor,
   };
 }

@@ -6,6 +6,11 @@ export { GameEngine } from "./js/GameEngine.js";
 export { GenesisEngine, createCharacter, describeGenesis } from "./js/genesis.js";
 export { generateTurn } from "./js/eventGenerator.js";
 export {
+  generateNarrativeAndOptions,
+  finalizeWeeklyOutput,
+  NarrativeLogicEngine,
+} from "./js/narrative-logic-engine.js";
+export {
   compileLiveSheet,
   eventWeight,
   meetsPrerequisites,
@@ -256,7 +261,7 @@ export { BUTTERFLY_CASCADES } from "./js/data/butterfly-cascades.js";
 
 import { GameEngine } from "./js/GameEngine.js";
 import { GenesisEngine } from "./js/genesis.js";
-import { closeHallOfFame, openHallOfFame, renderLifeSim, showBootError } from "./js/ui.js";
+import { closeHallOfFame, openHallOfFame, renderLifeSim, showBootError, setChoiceBusy, isChoiceBusy, holdChoiceBusy } from "./js/ui.js";
 import { SHOW_REPUTATION_UI } from "./js/data/ui-config.js";
 import { canBeginNewLife } from "./js/life-session.js";
 import { SAVE_KEY, clearLifeSave, clientBootHints, purgeStaleClientState, readLifeSave } from "./js/life-persist.js";
@@ -475,14 +480,19 @@ export class CenturyLifeLoop {
   }
 
   choose(index) {
+    if (isChoiceBusy()) return null;
     try {
       if (!this.engine || this.engine.gameOver) return null;
+      setChoiceBusy(true, `choose:${index}`);
       const result = this.engine.selectOption(index);
       const state = result?.state || this.engine.getGameState();
       this.sync(state).paint();
+      // Re-lock freshly painted buttons, then unlock on a real timer (not rAF).
+      holdChoiceBusy(280, "post-paint-hold");
       return result;
     } catch (error) {
       console.error("LifeSim: 選項結算失敗", error);
+      setChoiceBusy(false, "choose-throw");
       showBootError(error);
       return null;
     }
@@ -551,6 +561,7 @@ export class CenturyLifeLoop {
       const map = { 1: 0, 2: 1, 3: 2, Digit1: 0, Digit2: 1, Digit3: 2 };
       const choiceIndex = map[event.key] ?? map[event.code];
       if (choiceIndex == null) return;
+      if (isChoiceBusy()) return;
       const buttons = document.querySelectorAll("#choices-container .choice-btn");
       if (buttons[choiceIndex] && !buttons[choiceIndex].disabled) this.choose(choiceIndex);
     });
