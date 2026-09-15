@@ -433,14 +433,15 @@ export class CenturyLifeLoop {
     }
     this._lastKeyTime = currentTime;
 
+    // While locked (or already Tadokoro life): isolate buffer completely — never re-arm.
     if (this._eggLock || (this.engine?.character?.specialPresetId === "tadokoro_koji" && !this.engine?.gameOver)) {
       this._eggLock = true;
-      if (this._inputSequence) this._clearEggBuffer();
+      this._clearEggBuffer();
       return false;
     }
 
     if (!/^[0-9]$/.test(event.key)) {
-      if (this._inputSequence) this._clearEggBuffer();
+      this._clearEggBuffer();
       return false;
     }
 
@@ -449,8 +450,11 @@ export class CenturyLifeLoop {
       this._inputSequence = next;
       if (next === EGG) {
         this._eggLock = true;
+        this._inputSequence = "";
         this._clearEggBuffer();
         this.triggerTadokoroKoji();
+        // Hard isolation: buffer stays empty after fire; lock blocks any residual digits.
+        this._clearEggBuffer();
         return "fired";
       }
       return "pending";
@@ -488,7 +492,7 @@ export class CenturyLifeLoop {
       const state = result?.state || this.engine.getGameState();
       this.sync(state).paint();
       // Re-lock freshly painted buttons, then unlock on a real timer (not rAF).
-      holdChoiceBusy(280, "post-paint-hold");
+      holdChoiceBusy(320, "post-paint-hold");
       return result;
     } catch (error) {
       console.error("LifeSim: 選項結算失敗", error);
@@ -554,7 +558,12 @@ export class CenturyLifeLoop {
       }
       // Exact "114514" only — never fire on a single "1"; pending prefix blocks choose.
       const eggFeed = this._feedEggKeyBuffer(event);
-      if (eggFeed === "fired" || eggFeed === "pending") {
+      if (eggFeed === "fired") {
+        event.preventDefault();
+        this._clearEggBuffer();
+        return;
+      }
+      if (eggFeed === "pending") {
         event.preventDefault();
         return;
       }
@@ -562,6 +571,7 @@ export class CenturyLifeLoop {
       const choiceIndex = map[event.key] ?? map[event.code];
       if (choiceIndex == null) return;
       if (isChoiceBusy()) return;
+      // Post-egg digits must only choose — never re-enter egg buffer (lock already cleared it).
       const buttons = document.querySelectorAll("#choices-container .choice-btn");
       if (buttons[choiceIndex] && !buttons[choiceIndex].disabled) this.choose(choiceIndex);
     });

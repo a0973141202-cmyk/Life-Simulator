@@ -691,6 +691,12 @@ body.hide-reputation-ui .meter[data-stat="reputation"] {
   opacity: 0.55;
   transform: none;
   box-shadow: none;
+  pointer-events: none;
+}
+
+#choices-container.is-choice-busy,
+body.life-choice-busy #choices-container {
+  pointer-events: none;
 }
 
 .choice-index {

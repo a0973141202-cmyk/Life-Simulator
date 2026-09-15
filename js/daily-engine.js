@@ -15,6 +15,7 @@ import { childhoodClimate } from "./early-child-filter.js";
 import { filterCooledPool } from "./event-memory.js";
 import { scrubPublicText } from "./data/public-text.js";
 import { composeSituationLine } from "./dynamic-prose.js";
+import { isMemeLegendCharacter } from "./meme-chronicle.js";
 
 const PHASE_ORDER = ["dawn", "transit", "site", "meal", "paper", "social", "body", "wait", "night"];
 
@@ -83,13 +84,15 @@ export function resolveDailyState(ctx) {
   }
   if (age >= 13 && age <= 19 && education !== "none" && age < 18) return DAILY_STATES.school_teen;
   if (age >= 13 && age <= 17) return DAILY_STATES.school_teen;
-  if (age >= 7 && age <= 12 && education !== "none") return DAILY_STATES.school_child;
-  if (age <= 12) return DAILY_STATES.home_child;
+  if (age >= 7 && age <= 12 && education !== "none" && !isMemeLegendCharacter(ctx.character)) {
+    return DAILY_STATES.school_child;
+  }
+  if (age <= 12 && !isMemeLegendCharacter(ctx.character)) return DAILY_STATES.home_child;
   if (adult && (sector === "labor" || /農|工|匠|鋪|商|雜|務農|學徒/.test(occ))) {
     return DAILY_STATES.labor_legal;
   }
   if (adult && sector === "labor") return DAILY_STATES.labor_legal;
-  if (adult) return DAILY_STATES.labor_legal;
+  if (adult || isMemeLegendCharacter(ctx.character)) return DAILY_STATES.labor_legal;
   if (age >= 13) return DAILY_STATES.school_teen;
   return DAILY_STATES.home_child;
 }

@@ -16,6 +16,7 @@ import { publicTagLabel } from "./data/ui-zh.js";
 import { weavePersonaOptions } from "./persona-engine.js";
 import { MATURE_ADULT_MIN } from "./data/age-gate-rules.js";
 import { remapChoiceKindForAge } from "./age-gate.js";
+import { isMemeLegendCharacter } from "./meme-chronicle.js";
 
 const PREFIX_KIND = Object.freeze({
   trauma: { kind: "family", dirs: ["endure", "flee", "resist"], risk: "high", effects: { sanity: -1, health: -1 } },
@@ -127,14 +128,14 @@ function laneFromTag(tag, ctx, index) {
   const dir = normalizeDir(dirs[index % dirs.length]);
   const age = Number(ctx.narrativeFacts?.age ?? ctx.ageYears ?? 0);
   let kind = pack.kind;
-  if (age >= MATURE_ADULT_MIN && ADULT_PREFIX_KIND[cat]) {
+  if ((age >= MATURE_ADULT_MIN || isMemeLegendCharacter(ctx.character)) && ADULT_PREFIX_KIND[cat]) {
     kind = ADULT_PREFIX_KIND[cat];
   }
-  kind = remapChoiceKindForAge(kind, age);
+  kind = remapChoiceKindForAge(kind, age, ctx.character);
   const facts = ctx.narrativeFacts || {};
   if (Number(facts.health ?? 50) <= 28) kind = "illness";
   else if (facts.hungry && (kind === "labor" || kind === "play")) kind = "hunger";
-  else if (age < 7 && kind === "labor") kind = "family";
+  else if (age < 7 && kind === "labor" && !isMemeLegendCharacter(ctx.character)) kind = "family";
   return {
     tag,
     category: cat,

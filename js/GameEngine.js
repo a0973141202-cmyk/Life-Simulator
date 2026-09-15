@@ -180,6 +180,8 @@ export class GameEngine {
     this.turnCount = 0;
     this.gameOver = false;
     this.ending = null;
+    /** Reentrancy lock — blocks overlapping selectOption / advanceTurn. */
+    this._turnBusy = false;
   }
 
   initNewGame(overrides = {}) {
@@ -502,7 +504,23 @@ export class GameEngine {
     if (this.gameOver) {
       return { ok: false, error: "game_over", message: "人生已結束。", ending: this.ending };
     }
+    if (this._turnBusy) {
+      return {
+        ok: false,
+        error: "turn_busy",
+        message: "上一期尚未結算完。",
+        state: this.getGameState(),
+      };
+    }
+    this._turnBusy = true;
+    try {
+      return this._runAdvanceTurn(choiceIndex);
+    } finally {
+      this._turnBusy = false;
+    }
+  }
 
+  _runAdvanceTurn(choiceIndex) {
     const event = this.currentEvent;
     const options = event?.options || [];
     const safeIndex = Math.max(0, Math.min(options.length - 1, Number(choiceIndex)));

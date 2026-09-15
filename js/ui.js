@@ -82,22 +82,41 @@ export function setChoiceBusy(busy, reason = "") {
     // Failsafe only — normal unlock is holdChoiceBusy / setChoiceBusy(false).
     choiceBusyTimer = setTimeout(() => {
       choiceBusyTimer = 0;
-      setChoiceBusy(false, "busy-timeout");
+      choiceBusy = false;
+      applyChoiceBusyDom(false);
     }, CHOICE_BUSY_TIMEOUT_MS);
   }
 }
 
-/** Lock after paint, then auto-unlock after debounceMs (no rAF — avoids background-tab stalls). */
+/**
+ * Lock after paint, then auto-unlock after debounceMs (no rAF — avoids background-tab stalls).
+ * Does not route unlock through setChoiceBusy(true) in a way that races the unlock timer.
+ */
 export function holdChoiceBusy(debounceMs = CHOICE_DEBOUNCE_MS, reason = "post-paint-hold") {
-  setChoiceBusy(true, reason);
+  choiceBusy = true;
   if (choiceUnlockTimer) {
     clearTimeout(choiceUnlockTimer);
     choiceUnlockTimer = 0;
   }
+  if (choiceBusyTimer) {
+    clearTimeout(choiceBusyTimer);
+    choiceBusyTimer = 0;
+  }
+  applyChoiceBusyDom(true);
+  choiceBusyTimer = setTimeout(() => {
+    choiceBusyTimer = 0;
+    choiceBusy = false;
+    applyChoiceBusyDom(false);
+  }, CHOICE_BUSY_TIMEOUT_MS);
   const ms = Math.max(80, Number(debounceMs) || CHOICE_DEBOUNCE_MS);
   choiceUnlockTimer = setTimeout(() => {
     choiceUnlockTimer = 0;
-    setChoiceBusy(false, "choose-painted");
+    if (choiceBusyTimer) {
+      clearTimeout(choiceBusyTimer);
+      choiceBusyTimer = 0;
+    }
+    choiceBusy = false;
+    applyChoiceBusyDom(false);
   }, ms);
 }
 
@@ -580,6 +599,7 @@ function renderChoices(state) {
     root.append(empty);
     return;
   }
+  const busy = choiceBusy;
   options.forEach((option, index) => {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -587,6 +607,8 @@ function renderChoices(state) {
     if (option.style === "fog" || option.effectsHidden) btn.classList.add("is-fog");
     if (option.butterfly) btn.classList.add("is-butterfly");
     btn.dataset.index = String(index);
+    btn.disabled = busy;
+    btn.setAttribute("aria-disabled", busy ? "true" : "false");
     const gate = document.createElement("span");
     gate.className = "choice-index";
     gate.textContent = GATES[index] || String(index + 1);
@@ -599,6 +621,8 @@ function renderChoices(state) {
     });
     root.append(btn);
   });
+  root.classList.toggle("is-choice-busy", busy);
+  document.body.classList.toggle("life-choice-busy", busy);
 }
 
 function render(state) {
@@ -686,6 +710,7 @@ function paintArchive(state) {
   renderFigureLog(state);
   renderEvent(state);
   renderChoices(state);
+  applyChoiceBusyDom(choiceBusy);
   renderDeathResolution(state);
   syncNewFileControl(state);
   document.body.classList.toggle("is-over", Boolean(state.gameOver));

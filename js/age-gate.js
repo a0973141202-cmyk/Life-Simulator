@@ -25,6 +25,7 @@ import {
 } from "./data/age-gate-rules.js";
 import { earlyChildAllowed } from "./early-child-filter.js";
 import { semanticOptionAllowed } from "./semantic-filter.js";
+import { isMemeLegendCharacter } from "./meme-chronicle.js";
 
 export {
   ADULT_MIN,
@@ -55,12 +56,12 @@ export function optionLifeBand(ageYears = 0) {
 }
 
 /**
- * Remap mint prose kinds so adults never draw childhood family/play templates.
+ * Remap mint prose kinds so adults / meme legends never draw childhood family/play templates.
  */
-export function remapChoiceKindForAge(kind = "labor", ageYears = 0) {
+export function remapChoiceKindForAge(kind = "labor", ageYears = 0, character = null) {
   const age = Math.max(0, Number(ageYears) || 0);
   const raw = String(kind || "labor");
-  if (age >= MATURE_ADULT_MIN) {
+  if (age >= MATURE_ADULT_MIN || isMemeLegendCharacter(character)) {
     if (raw === "family" || raw === "play") return "labor";
     return raw;
   }
@@ -68,9 +69,10 @@ export function remapChoiceKindForAge(kind = "labor", ageYears = 0) {
   return raw;
 }
 
-export function adultChildVoiceForbidden(text = "", ageYears = 0) {
+export function adultChildVoiceForbidden(text = "", ageYears = 0, character = null) {
   const age = Math.max(0, Number(ageYears) || 0);
-  if (age < MATURE_ADULT_MIN) return false;
+  const mature = age >= MATURE_ADULT_MIN || isMemeLegendCharacter(character);
+  if (!mature) return false;
   const corpus = String(text || "");
   return MATURE_BANNED_CHILD_VOICE.some((pattern) => pattern.test(corpus));
 }
@@ -170,9 +172,12 @@ export function contentAllowedForAge(item, ageOrCtx = 0, maybeCtx = null) {
   if (age <= EARLY_CHILD_MAX && !["family", "play", "illness", "survival"].includes(lane)) return false;
   if (age <= TEEN_MAX && String(lane).startsWith("adult_") && lane !== "adult_work") return false;
   if (age < ADULT_MIN && String(lane).startsWith("adult_")) return false;
-  if (age >= MATURE_ADULT_MIN) {
+  const memeAdult = isMemeLegendCharacter(ctx.character);
+  if (age >= MATURE_ADULT_MIN || memeAdult) {
     if (lane === "play" || lane === "school" || lane === "adolescent") return false;
-    if (adultChildVoiceForbidden(corpusOf(item), age)) return false;
+    const lifeState = String(item.lifeState || item.state || "");
+    if (item.daily && lifeState === "home_child") return false;
+    if (adultChildVoiceForbidden(corpusOf(item), age, ctx.character)) return false;
   }
   if (age <= EARLY_CHILD_MAX && !earlyChildAllowed(item, { ...ctx, ageYears: age })) return false;
   return true;

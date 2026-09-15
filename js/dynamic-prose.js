@@ -688,19 +688,20 @@ export function composeChoiceLine(rng, ctx = {}, kind = "labor", index = 0, extr
     useKind = extra.kind || lane.kind;
     dir = extra.direction || lane.dir;
   }
-  if (age < 7 && useKind === "labor") {
+  if (age < 7 && useKind === "labor" && !isMemeLegendCharacter(ctx.character)) {
     useKind = "family";
     if (dir === "seek" || dir === "flee") dir = "help";
   }
-  useKind = remapChoiceKindForAge(useKind, age);
+  useKind = remapChoiceKindForAge(useKind, age, ctx.character);
   const avoid = extra.avoidTexts || [];
+  const matureVoice = age >= MATURE_ADULT_MIN || isMemeLegendCharacter(ctx.character);
   let line = "";
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const adultRetries = ["labor", "hunger", "illness", "money", "labor"];
     const childRetries = ["family", "hunger", "illness", "money", "labor"];
     const tryKind = attempt === 0
       ? useKind
-      : remapChoiceKindForAge((age >= MATURE_ADULT_MIN ? adultRetries : childRetries)[attempt % 5], age);
+      : remapChoiceKindForAge((matureVoice ? adultRetries : childRetries)[attempt % 5], age, ctx.character);
     const tryDir = attempt === 0 ? dir : (["guard", "seek", "resist", "help", "flee", "endure"][(index + attempt) % 6]);
     const core = assembleChoiceCore(rng, facts, tryKind, tryDir, extra);
     const tail = saltChoiceTail(facts, tryDir, index + attempt * 3, extra);

@@ -165,7 +165,7 @@ export function enforceVoiceAndStakes(rng, options = [], ctx = {}) {
 /**
  * Structural seal for UI: always 3 options with index/text/trueText; non-empty narrative.
  */
-export function sealNarrativePayload(payload = {}, ctx = {}) {
+export function sealNarrativePayload(payload = {}, ctx = {}, rng = null) {
   const facts = ctx.narrativeFacts || scanNarrativeFacts(ctx);
   const year = facts.year || ctx.year || ctx.time?.year || "";
   const place = facts.place || facts.city || "此地";
@@ -173,10 +173,16 @@ export function sealNarrativePayload(payload = {}, ctx = {}) {
   if (!narrative || narrative.length < 12) {
     narrative = `${year}年，${place}。這兩週先把眼前的帳結清，再談下一步。`;
   }
+  if (isAdultVoice(ctx) && hasChildVoice(narrative)) {
+    narrative = isMemeLegendCharacter(ctx.character)
+      ? `${year}年，${place}。盛年獨立的這兩週，旁人的口令先擱下，先把能換成工錢與名聲的路走完。`
+      : `${year}年，${place}。成年後的這兩週不再按屋裏看門的規矩過活，先把班表、帳本與人情結清。`;
+  }
   if (!/[。！？]$/.test(narrative)) narrative = `${narrative}。`;
 
+  const roll = typeof rng === "function" ? rng : () => Math.random();
   const options = enforceVoiceAndStakes(
-    () => Math.random(),
+    roll,
     payload.options || [],
     ctx,
   );
@@ -222,7 +228,7 @@ export function finalizeWeeklyOutput(rng, ctx = {}, payload = {}) {
     options,
     pressure: scene.pressure,
     meme: scene.meme,
-  }, ctx);
+  }, ctx, rng);
 
   return {
     ...payload,

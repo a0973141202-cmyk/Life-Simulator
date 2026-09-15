@@ -33,15 +33,16 @@ export const CONTENT_LANES = Object.freeze({
   adult_society: { min: ADULT_MIN, max: 120 },
 });
 
-/** Childhood / minor household voice — banned in option text at age ≥ 20. */
+/** Childhood / minor household voice — banned in option text at age ≥ 20 / meme legends. */
 export const MATURE_BANNED_CHILD_VOICE = Object.freeze([
-  /會被喊回來|趕在大人喊之前|趁大人沒喊/,
-  /把門栓插上，聽見拍門先裝作沒人/,
-  /把水打回來、把碗洗乾淨/,
+  /會被喊回來|趕在大人喊之前|趁大人沒喊|大人喊/,
+  /門栓|把門栓|看門|被留在屋裏看門/,
+  /把水打回來|打水|洗碗|把碗洗乾淨/,
   /用腳把家的邊界走清楚/,
-  /帶著弟妹|看弟妹|把弟妹/,
+  /帶著弟妹|看弟妹|把弟妹|弟妹/,
   /不許開門|不許玩火|學步|玩伴|捉迷藏|石板|戒尺|書包/,
-  /最小的那碗|屋裏的口令把/,
+  /最小的那碗|屋裏的口令|孩子王|先生點|聽門栓/,
+  /學步|玩伴|捉迷藏|玩具|下課排隊/,
 ]);
 
 /** Player-as-adult-actor. Household alcohol / war survival as victim is not these. */
